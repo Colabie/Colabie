@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     body::Bytes,
     extract::{FromRequest, Request},
     http::StatusCode,
@@ -19,7 +18,6 @@ macro_rules! erout {
 
 pub struct BitCode<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for BitCode<T>
 where
     T: DecodeOwned,
