@@ -66,7 +66,7 @@ fn generate_keypair() -> (Box<[u8]>, Box<[u8]>) {
     use fips204::traits::SerDes;
     use rand_chacha::rand_core::SeedableRng;
 
-    let mut rng = rand_chacha::ChaChaRng::from_entropy();
+    let mut rng = rand_chacha::ChaChaRng::from_entropy(); // Error
     let (pb_key, sk_key) = ml_dsa_87::try_keygen_with_rng(&mut rng).unwrap();
     (pb_key.into_bytes().into(), sk_key.into_bytes().into())
 }

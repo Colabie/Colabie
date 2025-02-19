@@ -13,7 +13,7 @@ schemou = { path = "../schemou" }
 bitcode = { version = "0", features = ["derive"], default-features = false }
 
 fips204 = "0.4"
-rand_chacha = "0.3"
+rand_chacha = "0.9"
 getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
