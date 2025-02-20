@@ -1,5 +1,4 @@
-use bitcode::decode;
-use schemou::{RegisterReq, RegisterRes};
+use schemou::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::js_sys::Uint8Array;
 
@@ -39,14 +38,14 @@ pub async fn register(username: &str) -> Result<(), JsValue> {
     save_raw("sk_key", &sk_key);
 
     let register = RegisterReq {
-        username: username.into(),
+        username: legos::ShortIdStr::new(username).unwrap(),
         pubkey: pb_key,
     };
 
-    let resp: RegisterRes = decode(
+    let (resp, _) = RegisterRes::deserialize(
         &post_raw(
             "http://localhost:8081/register",
-            &bitcode::encode(&register),
+            &register.serialize_buffered(),
         )
         .await?
         .to_vec(),

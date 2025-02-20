@@ -64,7 +64,7 @@ async fn register(
     // Issue URL: https://github.com/Colabie/Colabie/issues/10
     let pubkey = BASE64_STANDARD.encode(&register_req.pubkey);
     let commit_id = db
-        .new_record(register_req.username.into(), pubkey)
+        .new_record((*register_req.username).clone(), pubkey)
         .await
         .as_bytes()
         .into();
