@@ -1,6 +1,5 @@
 macro_rules! error {
     [ $vis:vis enum $name:ident { $($variant:ident => $error_msg:expr),* $(,)? }] => {
-        #[derive(Debug)]
         $vis enum $name {
             $($variant),*
         }
@@ -17,6 +16,14 @@ macro_rules! error {
         impl std::fmt::Display for SerdeError {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 f.write_str(self.description())
+            }
+        }
+
+        impl std::fmt::Debug for SerdeError {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", match self {
+                    $( Self::$variant => concat!("[", stringify!($variant), "] ", $error_msg), )*
+                })
             }
         }
     };
