@@ -5,6 +5,8 @@ struct Info {
     a: legos::ShortIdStr,
     b: String,
     c: Vec<u8>,
+    d: f32,
+    e: isize,
 }
 
 impl PartialEq for Info {
@@ -19,6 +21,8 @@ fn derive_macro() {
         a: legos::ShortIdStr::new("some_valid_username").unwrap(),
         b: "The quick brown fox jumps over the lazy dog.".to_string(),
         c: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        d: 5252345.0421,
+        e: isize::MIN,
     };
 
     let serialized = original.serialize_buffered();

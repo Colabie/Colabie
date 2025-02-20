@@ -61,6 +61,7 @@ fn impl_schemou(ast: &syn::DeriveInput) -> TokenStream {
         impl #name {
             #[inline]
             pub fn serialize_buffered(&self) -> Vec<u8> {
+                // TODO: preallocate
                 let mut data = vec![];
                 _ = Serde::serialize(self, &mut data);
                 data

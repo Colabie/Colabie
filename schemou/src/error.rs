@@ -34,5 +34,6 @@ error! {
         NotEnoughData => "ran out of data bytes while parsing, cannot deserialize the remaining fields",
         InvalidUTF8   => "raw bytes contain invalid UTF-8 data, cannot deserialize string",
         InvalidChars  => "found invalid characters for `ShortIdStr`",
+        InvalidChar   => "found invalid character",
     }
 }
