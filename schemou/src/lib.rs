@@ -117,3 +117,59 @@ impl Serde for String {
         })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[derive(Schemou, Debug)]
+    struct Info {
+        a: ShortIdStr,
+        b: String,
+        c: Vec<u8>,
+    }
+
+    impl PartialEq for Info {
+        fn eq(&self, other: &Self) -> bool {
+            *self.a == *other.a && self.b == other.b && self.c == other.c
+        }
+    }
+
+    #[test]
+    fn short_id_str_check() {
+        assert!(matches!(
+            ShortIdStr::new("_some123_valid_username..."),
+            Ok(..)
+        ));
+
+        assert!(matches!(
+            ShortIdStr::new("_some-invalid*username"),
+            Err(SerdeError::InvalidChars)
+        ));
+    }
+
+    #[test]
+    fn vec_serde() {
+        let original = b"The quick brown fox jumps over the lazy dog.".to_vec();
+        let serialized = original.serialize();
+        let (deserialized, bytes_read) = Vec::<u8>::deserialize(&serialized).unwrap();
+
+        assert_eq!(deserialized, original);
+        assert_eq!(bytes_read, serialized.len());
+    }
+
+    #[test]
+    fn derive_macro() {
+        let original = Info {
+            a: ShortIdStr::new("some_valid_username").unwrap(),
+            b: "The quick brown fox jumps over the lazy dog.".to_string(),
+            c: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        };
+
+        let serialized = original.serialize();
+        let (deserialized, bytes_read) = Info::deserialize(&serialized).unwrap();
+
+        assert_eq!(deserialized, original);
+        assert_eq!(bytes_read, serialized.len());
+    }
+}
