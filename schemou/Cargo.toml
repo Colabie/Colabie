@@ -4,4 +4,4 @@ version = "0.0.1-pr"
 edition = "2021"
 
 [dependencies]
-bitcode = { version = "0", features = ["derive"], default-features = false }
+schemou-macro = { version = "0.1.0", path = "schemou-macro" }

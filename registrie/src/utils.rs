@@ -4,7 +4,8 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use bitcode::{DecodeOwned, Encode};
+
+use schemou::Serde;
 
 #[macro_export]
 macro_rules! erout {
@@ -16,11 +17,11 @@ macro_rules! erout {
     };
 }
 
-pub struct BitCode<T>(pub T);
+pub struct BitCode<T: Serde>(pub T);
 
 impl<T, S> FromRequest<S> for BitCode<T>
 where
-    T: DecodeOwned,
+    T: Serde,
     S: Send + Sync,
 {
     type Rejection = StatusCode;
@@ -31,16 +32,20 @@ where
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
         Ok(Self(
-            bitcode::decode(&bytes).map_err(|_| StatusCode::BAD_REQUEST)?,
+            T::deserialize(&bytes)
+                .map_err(|_| StatusCode::BAD_REQUEST)?
+                .0,
         ))
     }
 }
 
 impl<T> IntoResponse for BitCode<T>
 where
-    T: Encode,
+    T: Serde,
 {
     fn into_response(self) -> Response {
-        bitcode::encode(&self.0).into_response()
+        let mut v = vec![];
+        self.0.serialize(&mut v);
+        v.into_response()
     }
 }
