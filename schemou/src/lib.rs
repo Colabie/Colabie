@@ -13,3 +13,14 @@ pub trait Serde {
     where
         Self: Sized;
 }
+
+#[derive(Schemou)]
+pub struct RegisterReq {
+    pub username: legos::ShortIdStr,
+    pub pubkey: Box<[u8]>,
+}
+
+#[derive(Schemou)]
+pub struct RegisterRes {
+    pub commit_id: Box<[u8]>,
+}
