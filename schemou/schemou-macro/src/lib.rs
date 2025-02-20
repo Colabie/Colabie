@@ -19,7 +19,7 @@ fn impl_schemou(ast: &syn::DeriveInput) -> TokenStream {
                     .expect("Tuple structs are not supported.");
 
                 quote! {
-                    data.extend(Serde::serialize(&self.#field_name));
+                    bytes_written += Serde::serialize(&self.#field_name, output);
                 }
             }),
             // deserialization
@@ -58,11 +58,20 @@ fn impl_schemou(ast: &syn::DeriveInput) -> TokenStream {
 
     let name = &ast.ident;
     let gen = quote! {
-        impl Serde for #name {
-            fn serialize(&self) -> Vec<u8>{
+        impl #name {
+            #[inline]
+            pub fn serialize_buffered(&self) -> Vec<u8> {
                 let mut data = vec![];
-                #(#serialize_fields)*
+                _ = Serde::serialize(self, &mut data);
                 data
+            }
+        }
+
+        impl Serde for #name {
+            fn serialize(&self, output: &mut Vec<u8>) -> usize {
+                let mut bytes_written = 0;
+                #(#serialize_fields)*
+                bytes_written
             }
 
             fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError> {

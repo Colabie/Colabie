@@ -1,4 +1,5 @@
 mod error;
+mod impls;
 
 pub use error::SerdeError;
 pub use schemou_macro::Schemou;
@@ -10,7 +11,8 @@ type LengthPrefix = u32;
 const LENGTH_BYTES: usize = std::mem::size_of::<LengthPrefix>();
 
 pub trait Serde {
-    fn serialize(&self) -> Vec<u8>;
+    /// Write the serialized data to output and return the bytes written
+    fn serialize(&self, output: &mut Vec<u8>) -> usize;
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError>
     where
         Self: Sized;
@@ -19,103 +21,35 @@ pub trait Serde {
 #[derive(Debug, Clone)]
 pub struct ShortIdStr(String);
 
-impl ShortIdStr {
-    pub fn new(s: impl AsRef<str>) -> Result<Self, SerdeError> {
-        s.as_ref()
-            .chars()
-            .all(|i| {
-                (i.is_ascii_alphabetic() && i.is_lowercase())
-                    || i.is_ascii_digit()
-                    || i == '_'
-                    || i == '.'
-            })
-            .then(|| ShortIdStr(s.as_ref().to_string()))
-            .ok_or(SerdeError::InvalidChars)
+fn serialize_with_length_prefix(slice: &[u8], output: &mut Vec<u8>) -> usize {
+    if slice.len() >= LengthPrefix::MAX as usize {
+        panic!()
     }
+
+    output.extend_from_slice(&(slice.len() as LengthPrefix).to_be_bytes());
+    output.extend_from_slice(slice);
+
+    slice.len() + LENGTH_BYTES
 }
 
-impl std::ops::Deref for ShortIdStr {
-    type Target = String;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+fn deserialize_with_length_prefix<T, F: FnOnce(&[u8], usize) -> T>(
+    data: &[u8],
+    f: F,
+) -> Result<(T, usize), SerdeError> {
+    let [a, b, c, d] = data.get(0..LENGTH_BYTES).ok_or(SerdeError::NotEnoughData)? else {
+        unreachable!()
+    };
 
-impl Serde for ShortIdStr {
-    fn serialize(&self) -> Vec<u8> {
-        let bytes = self.as_bytes();
-        if bytes.len() >= 255 {
-            panic!()
-        }
+    let len = u32::from_be_bytes([*a, *b, *c, *d]) as usize;
 
-        let mut data = Vec::with_capacity(bytes.len() + 1);
-
-        data.push(self.len() as u8);
-        data.extend_from_slice(bytes);
-
-        data
-    }
-
-    fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError> {
-        let len = data[0] as usize;
-
-        Ok((
-            ShortIdStr::new(
-                String::from_utf8(
-                    data.get(1..len + 1)
-                        .ok_or(SerdeError::NotEnoughData)?
-                        .to_vec(),
-                )
-                .map_err(|_| SerdeError::InvalidUTF8)?,
-            )?,
-            len + 1,
-        ))
-    }
-}
-
-impl Serde for Vec<u8> {
-    fn serialize(&self) -> Vec<u8> {
-        if self.len() >= LengthPrefix::MAX as usize {
-            panic!()
-        }
-
-        let mut data = Vec::with_capacity(self.len() + LENGTH_BYTES);
-
-        data.extend_from_slice(&(self.len() as LengthPrefix).to_be_bytes());
-        data.extend_from_slice(self);
-
-        data
-    }
-
-    fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError> {
-        let [a, b, c, d] = data.get(0..LENGTH_BYTES).ok_or(SerdeError::NotEnoughData)? else {
-            unreachable!()
-        };
-
-        let len = u32::from_be_bytes([*a, *b, *c, *d]) as usize;
-
-        Ok((
+    Ok((
+        f(
             data.get(LENGTH_BYTES..len + LENGTH_BYTES)
-                .ok_or(SerdeError::NotEnoughData)?
-                .to_vec(),
+                .ok_or(SerdeError::NotEnoughData)?,
             len + LENGTH_BYTES,
-        ))
-    }
-}
-
-impl Serde for String {
-    fn serialize(&self) -> Vec<u8> {
-        let bytes = self.as_bytes().to_vec();
-        bytes.serialize()
-    }
-
-    fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError> {
-        Vec::<u8>::deserialize(data).and_then(|(v, l)| {
-            String::from_utf8(v)
-                .map(|s| (s, l))
-                .map_err(|_| SerdeError::InvalidUTF8)
-        })
-    }
+        ),
+        len + LENGTH_BYTES,
+    ))
 }
 
 #[cfg(test)]
@@ -151,7 +85,9 @@ mod test {
     #[test]
     fn vec_serde() {
         let original = b"The quick brown fox jumps over the lazy dog.".to_vec();
-        let serialized = original.serialize();
+        let mut serialized = vec![];
+
+        _ = original.serialize(&mut serialized);
         let (deserialized, bytes_read) = Vec::<u8>::deserialize(&serialized).unwrap();
 
         assert_eq!(deserialized, original);
@@ -166,7 +102,7 @@ mod test {
             c: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         };
 
-        let serialized = original.serialize();
+        let serialized = original.serialize_buffered();
         let (deserialized, bytes_read) = Info::deserialize(&serialized).unwrap();
 
         assert_eq!(deserialized, original);
