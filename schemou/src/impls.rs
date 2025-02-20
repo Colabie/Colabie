@@ -1,56 +1,10 @@
-use super::*;
+use crate::{Serde, SerdeError};
 
-impl ShortIdStr {
-    pub fn new(s: impl AsRef<str>) -> Result<Self, SerdeError> {
-        s.as_ref()
-            .chars()
-            .all(|i| {
-                (i.is_ascii_alphabetic() && i.is_lowercase())
-                    || i.is_ascii_digit()
-                    || i == '_'
-                    || i == '.'
-            })
-            .then(|| ShortIdStr(s.as_ref().to_string()))
-            .ok_or(SerdeError::InvalidChars)
-    }
-}
+/// The type that will be used to store the length of the slice.
+type LengthPrefix = u32;
 
-impl std::ops::Deref for ShortIdStr {
-    type Target = String;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Serde for ShortIdStr {
-    fn serialize(&self, output: &mut Vec<u8>) -> usize {
-        let bytes = self.as_bytes();
-        if bytes.len() >= 255 {
-            panic!()
-        }
-
-        output.push(self.len() as u8);
-        output.extend_from_slice(bytes);
-
-        bytes.len() + 1
-    }
-
-    fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError> {
-        let len = data[0] as usize;
-
-        Ok((
-            ShortIdStr::new(
-                String::from_utf8(
-                    data.get(1..len + 1)
-                        .ok_or(SerdeError::NotEnoughData)?
-                        .to_vec(),
-                )
-                .map_err(|_| SerdeError::InvalidUTF8)?,
-            )?,
-            len + 1,
-        ))
-    }
-}
+/// Number of bytes used to store the length of the slice.
+const LENGTH_BYTES: usize = std::mem::size_of::<LengthPrefix>();
 
 impl Serde for Box<[u8]> {
     fn serialize(&self, output: &mut Vec<u8>) -> usize {
@@ -85,4 +39,47 @@ impl Serde for String {
         })?
         .0
     }
+}
+
+fn serialize_with_length_prefix(slice: &[u8], output: &mut Vec<u8>) -> usize {
+    if slice.len() >= LengthPrefix::MAX as usize {
+        panic!()
+    }
+
+    output.extend_from_slice(&(slice.len() as LengthPrefix).to_be_bytes());
+    output.extend_from_slice(slice);
+
+    slice.len() + LENGTH_BYTES
+}
+
+fn deserialize_with_length_prefix<T, F: FnOnce(&[u8], usize) -> T>(
+    data: &[u8],
+    f: F,
+) -> Result<(T, usize), SerdeError> {
+    let [a, b, c, d] = data.get(0..LENGTH_BYTES).ok_or(SerdeError::NotEnoughData)? else {
+        unreachable!()
+    };
+
+    let len = u32::from_be_bytes([*a, *b, *c, *d]) as usize;
+
+    Ok((
+        f(
+            data.get(LENGTH_BYTES..len + LENGTH_BYTES)
+                .ok_or(SerdeError::NotEnoughData)?,
+            len + LENGTH_BYTES,
+        ),
+        len + LENGTH_BYTES,
+    ))
+}
+
+#[test]
+fn vec_serde() {
+    let original = b"The quick brown fox jumps over the lazy dog.".to_vec();
+    let mut serialized = vec![];
+
+    _ = original.serialize(&mut serialized);
+    let (deserialized, bytes_read) = Vec::<u8>::deserialize(&serialized).unwrap();
+
+    assert_eq!(deserialized, original);
+    assert_eq!(bytes_read, serialized.len());
 }
