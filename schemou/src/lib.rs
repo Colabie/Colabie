@@ -1,12 +1,10 @@
-use bitcode::{Decode, Encode};
+mod error;
 
-#[derive(Encode, Decode, Debug)]
-pub struct RegisterReq {
-    pub username: Box<str>,
-    pub pubkey: Box<[u8]>,
-}
+pub use error::SerdeError;
 
-#[derive(Encode, Decode, Debug)]
-pub struct RegisterRes {
-    pub commit_id: Box<[u8]>,
+pub trait Serde {
+    fn serialize(&self) -> Vec<u8>;
+    fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError>
+    where
+        Self: Sized;
 }
