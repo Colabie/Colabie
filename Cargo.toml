@@ -5,6 +5,7 @@ members = [
   "clientie",
   "registrie",
   "schemou",
+  "schemou/schemou-macro",
 
   # Internals
   "xtasks"
