@@ -1,10 +1,4 @@
-use crate::{Serde, SerdeError};
-
-/// The type that will be used to store the length of the slice.
-type LengthPrefix = u32;
-
-/// Number of bytes used to store the length of the slice.
-const LENGTH_BYTES: usize = std::mem::size_of::<LengthPrefix>();
+use crate::*;
 
 impl Serde for Box<[u8]> {
     fn serialize(&self, output: &mut Vec<u8>) -> usize {
@@ -132,8 +126,8 @@ macro_rules! impl_serde_for_numbers {
 }
 
 impl_serde_for_numbers! {
-    u8, u16, u32, u64, usize, u128,
-    i8, i16, i32, i64, isize, i128,
+    u8, u16, u32, u64, u128,
+    i8, i16, i32, i64, i128,
     f32, f64
 }
 
