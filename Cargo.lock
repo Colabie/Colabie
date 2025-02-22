@@ -1547,6 +1547,7 @@ name = "schemou"
 version = "0.0.1-pr"
 dependencies = [
  "schemou-macro",
+ "thiserror 2.0.11",
 ]
 
 [[package]]

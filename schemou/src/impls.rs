@@ -74,14 +74,18 @@ impl Serde for char {
     }
 
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError> {
+        let raw = u32::from_be_bytes(
+            data.get(..std::mem::size_of::<Self>())
+                .ok_or(SerdeError::NotEnoughData)?
+                .try_into()
+                .unwrap(),
+        );
+
         Ok((
-            char::from_u32(u32::from_be_bytes(
-                data.get(..std::mem::size_of::<Self>())
-                    .ok_or(SerdeError::NotEnoughData)?
-                    .try_into()
-                    .unwrap(),
-            ))
-            .ok_or(SerdeError::InvalidChar)?,
+            char::from_u32(raw).ok_or(SerdeError::ParsingError {
+                ty_name: "char",
+                error: format!("invalid character: {raw:X}"),
+            })?,
             std::mem::size_of::<Self>(),
         ))
     }
