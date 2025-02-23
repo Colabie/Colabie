@@ -17,9 +17,9 @@ macro_rules! erout {
     };
 }
 
-pub struct BitCode<T: Serde>(pub T);
+pub struct Schemou<T: Serde>(pub T);
 
-impl<T, S> FromRequest<S> for BitCode<T>
+impl<T, S> FromRequest<S> for Schemou<T>
 where
     T: Serde,
     S: Send + Sync,
@@ -39,7 +39,7 @@ where
     }
 }
 
-impl<T> IntoResponse for BitCode<T>
+impl<T> IntoResponse for Schemou<T>
 where
     T: Serde,
 {
