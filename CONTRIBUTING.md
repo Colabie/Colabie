@@ -62,11 +62,11 @@ section for this project. You are encouraged to ask questions which will help us
 
 We need your help to explore ideas for insights on how we can overcome the complexity of this project.
 
-You can start from [What is Colabie?](https://github.com/Colabie/Colabie/discussions/16),
+You can start from [What is Colabie?](https://github.com/Colabie/Colabie/issues/21),
 your input will not only deepen our understanding but also aid in creating comprehensive plans that address the 
 uncertainties we encounter.
 
-Share your thoughts right now in [GitHub Discussions](https://github.com/Colabie/Colabie/discussions).
+Share your thoughts right now in [Open Discussions](https://github.com/Colabie/Colabie/issues?q=is%3Aissue%20state%3Aopen%20label%3Adiscussion).
 
 
 ### Contribute Your Art & Design Logos 🎨✨
