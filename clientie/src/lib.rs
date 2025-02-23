@@ -28,7 +28,8 @@ pub async fn register(username: &str) -> Result<(), JsValue> {
     // labels: good first issue
     // Issue URL: https://github.com/Colabie/Colabie/issues/6
 
-    // log(&format!("{:?}", load_raw("sk_key")));
+    let username = legos::ShortIdStr::new(username)
+        .map_err(|e| JsValue::from_str(&format!("Invalid username: {e}")))?;
 
     let (pb_key, sk_key) = generate_keypair();
 
@@ -38,7 +39,7 @@ pub async fn register(username: &str) -> Result<(), JsValue> {
     save_raw("sk_key", &sk_key);
 
     let register = RegisterReq {
-        username: legos::ShortIdStr::new(username).unwrap(),
+        username,
         pubkey: pb_key,
     };
 
