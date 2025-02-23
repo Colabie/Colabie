@@ -12,15 +12,19 @@ pub fn derive(ast: &syn::DeriveInput) -> TokenStream {
     }
 }
 
-// TODO: implement tuple structs
 fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStruct) -> TokenStream {
+    let is_tuple_struct = matches!(fields, syn::Fields::Unnamed(..));
     let (serialize_fields, deserialize_fields, collection) = (
         // serialization
-        fields.iter().map(|field| {
+        fields.iter().enumerate().map(|(field_idx, field)| {
             let field_name = field
                 .ident
                 .as_ref()
-                .expect("Tuple structs are not supported.");
+                .map(|i| quote! { #i })
+                .unwrap_or_else(|| {
+                    let literal = proc_macro2::Literal::usize_unsuffixed(field_idx);
+                    quote! { #literal }
+                });
 
             quote! {
                 bytes_written += Serde::serialize(&self.#field_name, output);
@@ -29,9 +33,7 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
         // deserialization
         fields.iter().enumerate().map(|(idx, field)| {
             let ty = &field.ty;
-
-            let field_var_ident =
-                proc_macro2::Ident::new(&format!("f{idx}"), proc_macro2::Span::call_site());
+            let field_var_ident = make_ident(&format!("f{idx}"));
 
             quote! {
                 let #field_var_ident = <#ty as Serde>::deserialize(&data.get(offset..)
@@ -41,17 +43,22 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
         }),
         // collection
         fields.iter().enumerate().map(|(idx, field)| {
-            let field_name = field
-                .ident
-                .as_ref()
-                .expect("Tuple structs are not supported.");
+            let field_var_ident = make_ident(&format!("f{idx}"));
 
-            let field_var_ident =
-                proc_macro2::Ident::new(&format!("f{idx}"), proc_macro2::Span::call_site());
-
-            quote! { #field_name: #field_var_ident.0 }
+            if is_tuple_struct {
+                quote! { #field_var_ident.0 }
+            } else {
+                let field_name = field.ident.as_ref().unwrap();
+                quote! { #field_name: #field_var_ident.0 }
+            }
         }),
     );
+
+    let collection = if is_tuple_struct {
+        quote! { Self(#(#collection),*) }
+    } else {
+        quote! { Self{ #(#collection),* } }
+    };
 
     let gen = quote! {
         impl #name {
@@ -76,7 +83,7 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
                 #(#deserialize_fields)*
 
                 Ok((
-                    Self { #(#collection),* }, offset
+                    #collection, offset
                 ))
             }
         }
@@ -221,4 +228,8 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
         }
     }
     .into()
+}
+
+fn make_ident(string: &str) -> proc_macro2::Ident {
+    proc_macro2::Ident::new(string, proc_macro2::Span::call_site())
 }

@@ -9,6 +9,9 @@ struct Info {
     e: i32,
 }
 
+#[derive(Schemou, Debug, PartialEq, Eq)]
+struct TupleStruct(String, i32, Vec<u8>);
+
 impl PartialEq for Info {
     fn eq(&self, other: &Self) -> bool {
         *self.a == *other.a && self.b == other.b && self.c == other.c
@@ -21,6 +24,21 @@ enum Foo {
     B,
     C { a: i8, b: u32, c: String },
     D { info: Info },
+}
+
+#[test]
+fn derive_tuple_struct() {
+    let original = TupleStruct(
+        String::from("The quick brown jumps over the lazy dog."),
+        42,
+        vec![10, 20, 30],
+    );
+
+    let serialized = original.serialize_buffered();
+    let (deserialized, bytes_read) = TupleStruct::deserialize(&serialized).unwrap();
+
+    assert_eq!(deserialized, original);
+    assert_eq!(bytes_read, serialized.len());
 }
 
 #[test]
