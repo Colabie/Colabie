@@ -20,21 +20,6 @@ impl Serde for Vec<u8> {
     }
 }
 
-impl Serde for String {
-    fn serialize(&self, output: &mut Vec<u8>) -> usize {
-        serialize_with_length_prefix(self.as_bytes(), output)
-    }
-
-    fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError> {
-        deserialize_with_length_prefix(data, |i, l| {
-            String::from_utf8(i.to_vec())
-                .map(|i| (i, l))
-                .map_err(|_| SerdeError::InvalidUTF8)
-        })?
-        .0
-    }
-}
-
 fn serialize_with_length_prefix(slice: &[u8], output: &mut Vec<u8>) -> usize {
     if slice.len() >= LengthPrefix::MAX as usize {
         panic!("size exceeded length prefix");

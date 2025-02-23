@@ -23,6 +23,7 @@ pub trait Serde {
 #[derive(Schemou)]
 pub struct RegisterReq {
     pub username: legos::ShortIdStr,
+    // TODO: All schemou types should be Hardened and have explicit invarients, no generic de-serialization
     pub pubkey: Box<[u8]>,
 }
 

@@ -4,28 +4,30 @@ use crate::{Serde, SerdeError};
 pub struct ShortIdStr(String);
 
 impl ShortIdStr {
-    pub fn new(s: impl AsRef<str>) -> Result<Self, SerdeError> {
-        if s.as_ref().len() > u8::MAX as _ {
+    pub fn new(s: impl Into<String>) -> Result<Self, SerdeError> {
+        Self::from_bytes(s.into().into_bytes())
+    }
+
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self, SerdeError> {
+        if bytes.len() > u8::MAX as _ {
             return Err(Self::error(
                 "string length exceeded 255 characters".to_string(),
             ));
         }
 
-        s.as_ref()
-            .chars()
-            .find(|&i| {
-                // find invalid char
-                !((i.is_ascii_alphabetic() && i.is_lowercase())
-                    || i.is_ascii_digit()
-                    || i == '_'
-                    || i == '.')
-            })
-            .map_or_else(
-                || Ok(ShortIdStr(s.as_ref().to_string())),
-                |i| Err(Self::error(format!(
+        let invalid_char = bytes.iter().find(|&i| {
+            !((i.is_ascii_alphabetic() && i.is_ascii_lowercase())
+                || i.is_ascii_digit()
+                || *i == b'_'
+                || *i == b'.')
+        });
+
+        match invalid_char {
+            None => Ok(ShortIdStr(String::from_utf8(bytes).expect("Invariant checked above"))),
+            Some(i) => Err(Self::error(format!(
                     "invalid character: '{i}', note: only lowercase alphabetic, digits, '.' and '_' are valid characters for `ShortIdStr`"
                 ))),
-            )
+        }
     }
 
     fn error(error: String) -> SerdeError {
@@ -56,18 +58,13 @@ impl Serde for ShortIdStr {
 
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError> {
         let len = data[0] as usize;
+        let short_id_str = ShortIdStr::from_bytes(
+            data.get(1..len + 1)
+                .ok_or(SerdeError::NotEnoughData)?
+                .to_owned(),
+        )?;
 
-        Ok((
-            ShortIdStr::new(
-                String::from_utf8(
-                    data.get(1..len + 1)
-                        .ok_or(SerdeError::NotEnoughData)?
-                        .to_vec(),
-                )
-                .map_err(|_| SerdeError::InvalidUTF8)?,
-            )?,
-            len + 1,
-        ))
+        Ok((short_id_str, len + 1))
     }
 }
 

@@ -3,7 +3,6 @@ use schemou::*;
 #[derive(Schemou, Debug)]
 struct Info {
     a: legos::ShortIdStr,
-    b: String,
     c: Vec<u8>,
     d: f32,
     e: i32,
@@ -14,15 +13,14 @@ struct TupleStruct(String, i32, Vec<u8>);
 
 impl PartialEq for Info {
     fn eq(&self, other: &Self) -> bool {
-        *self.a == *other.a && self.b == other.b && self.c == other.c
+        *self.a == *other.a && self.c == other.c
     }
 }
 
 #[derive(Schemou, PartialEq, Debug)]
 enum Foo {
-    A(String),
     B,
-    C { a: i8, b: u32, c: String },
+    C { a: i8, b: u32 },
     D { info: Info },
 }
 
@@ -45,7 +43,6 @@ fn derive_tuple_struct() {
 fn derive_struct() {
     let original = Info {
         a: legos::ShortIdStr::new("some_valid_username").unwrap(),
-        b: "The quick brown fox jumps over the lazy dog.".to_string(),
         c: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         d: 5252345.0421,
         e: i32::MIN,
@@ -63,7 +60,6 @@ fn mixed_test() {
     let original = Foo::D {
         info: Info {
             a: legos::ShortIdStr::new("some_valid_username").unwrap(),
-            b: "The quick brown fox jumps over the lazy dog.".to_string(),
             c: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
             d: 5252345.0421,
             e: i32::MIN,
@@ -79,11 +75,7 @@ fn mixed_test() {
 
 #[test]
 fn derive_enum() {
-    let original = Foo::C {
-        a: 10,
-        b: 20,
-        c: "Hello, World!".to_string(),
-    };
+    let original = Foo::C { a: 10, b: 20 };
 
     let serialized = original.serialize_buffered();
     let (deserialized, bytes_read) = Foo::deserialize(&serialized).unwrap();
