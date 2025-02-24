@@ -10,16 +10,17 @@ extern "C" {
     #[wasm_bindgen(catch)]
     async fn post_raw(url: &str, body: &[u8]) -> Result<Uint8Array, JsValue>;
 
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(msg: &str);
-
     fn save_raw(key: &str, value: &[u8]);
+
     fn load_raw(key: &str) -> Box<[u8]>;
 }
 
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
+
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(msg: &str);
 }
 
 #[wasm_bindgen]
