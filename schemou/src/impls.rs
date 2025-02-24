@@ -138,10 +138,15 @@ fn char_serde() {
 }
 
 #[test]
-#[should_panic]
 fn char_serde_check() {
     let data = 0x110000_u32.to_be_bytes();
-    _ = char::deserialize(&data).unwrap();
+    assert!(matches!(
+        char::deserialize(&data),
+        Err(SerdeError::ParsingError {
+            ty_name: "char",
+            ..
+        })
+    ));
 }
 
 #[test]
