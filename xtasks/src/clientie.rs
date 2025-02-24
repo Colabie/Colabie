@@ -1,7 +1,7 @@
 use xtasks::*;
 
-use std::process::Command;
 use std::io;
+use std::process::Command;
 
 const WEB_OUTPUT_DIR: &str = "target/web";
 
@@ -12,7 +12,7 @@ pub fn build() -> io::Result<()> {
         .status()
         .is_err()
     {
-        println!("[xtask]: Installing wasm-pack");
+        println!("[xtask]: Installing wasm-bindgen");
         Command::new("cargo")
             .args(["install", "wasm-bindgen-cli"])
             .status()?
@@ -44,7 +44,7 @@ pub fn build() -> io::Result<()> {
         .status()?
         .early_ret()?;
 
-    println!("[xtask]: Moving clientie web files to target/web");
+    println!("[xtask]: Moving clientie web files to {WEB_OUTPUT_DIR}");
     copy_dir_all("clientie/web", WEB_OUTPUT_DIR)?;
 
     Ok(())
