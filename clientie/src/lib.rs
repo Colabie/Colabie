@@ -72,3 +72,18 @@ fn generate_keypair() -> (Box<[u8]>, Box<[u8]>) {
     let (pb_key, sk_key) = ml_dsa_87::try_keygen_with_rng(&mut rng).unwrap();
     (pb_key.into_bytes().into(), sk_key.into_bytes().into())
 }
+
+#[cfg(test)]
+mod test {
+    use wasm_bindgen_test::*;
+
+    #[wasm_bindgen_test]
+    fn pass() {
+        assert_eq!(1, 1 + 1);
+    }
+
+    #[wasm_bindgen_test]
+    fn fail() {
+        assert_eq!(1, 2);
+    }
+}

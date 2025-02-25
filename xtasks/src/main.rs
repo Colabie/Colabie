@@ -1,45 +1,55 @@
 use xtasks::*;
 
-use clap::Parser;
-use std::io;
-use std::process::Command;
+use std::process::{exit, Command};
+use std::{env, io};
 
 mod clientie;
 mod registrie;
 
-#[derive(Parser)]
-enum Xtask {
-    Make,
-    ServeClientie,
-    ServeRegistrie,
-    WatchClientie,
-    WatchRegistrie,
-    QuickDevRegistrie,
+fn print_usage() {
+    eprintln!("[xtask]: Usage: cargo x <command>");
+    eprintln!("[xtask]: Available commands are:");
+    eprintln!("[xtask]:     make");
+    eprintln!("[xtask]:     serve-clientie");
+    eprintln!("[xtask]:     watch-clientie");
+    eprintln!("[xtask]:     serve-registrie");
+    eprintln!("[xtask]:     watch-registrie");
 }
 
 fn main() -> io::Result<()> {
-    let command = Xtask::parse();
+    let mut args = env::args();
+    _ = args.next().expect("Program name");
 
-    match command {
-        Xtask::Make => {
+    let Some(command) = args.next() else {
+        eprintln!("[xtask]: Error: No command provided");
+        print_usage();
+        exit(-1);
+    };
+
+    match command.as_str() {
+        "make" => {
             println!("[xtask]: Making the Colabie project, finally ;)");
             clientie::build()?;
             registrie::build()
         }
-        Xtask::ServeClientie => {
+
+        "serve-clientie" => {
             clientie::build()?;
             clientie::serve()
         }
-        Xtask::ServeRegistrie => {
+        "watch-clientie" => watch("clientie/", "run --package xtasks serve-clientie"),
+
+        "serve-registrie" => {
             registrie::build()?;
             registrie::serve()
         }
-        Xtask::WatchClientie => watch("clientie/", "run --package xtasks serve-clientie"),
-        Xtask::WatchRegistrie => watch("registrie/src", "run --package xtasks serve-registrie"),
-        Xtask::QuickDevRegistrie => watch(
-            "registrie/tests",
-            "test --package registrie -q quick_dev -- --nocapture",
-        ),
+        "watch-registrie" => watch("registrie/src", "run --package xtasks serve-registrie"),
+
+        command => {
+            eprintln!("[xtask]: Error: Invalid command `{command}`");
+            print_usage();
+            exit(-1);
+        }
     }
 }
 

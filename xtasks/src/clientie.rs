@@ -24,23 +24,19 @@ pub fn build() -> io::Result<()> {
     Command::new("cargo")
         .arg("build")
         .arg("--release")
-        .arg("--package")
-        .arg("clientie")
-        .arg("--target")
-        .arg("wasm32-unknown-unknown")
+        .args(["--package", "clientie"])
+        .args(["--target", "wasm32-unknown-unknown"])
         .status()?
         .early_ret()?;
 
     _ = std::fs::remove_dir_all(WEB_OUTPUT_DIR);
 
-    println!("[xtasks]: Building wasm files");
+    println!("[xtasks]: Building wasm bindgen files");
     Command::new("wasm-bindgen")
         .arg("target/wasm32-unknown-unknown/release/clientie.wasm")
         .arg("--no-typescript")
-        .arg("--target")
-        .arg("web")
-        .arg("--out-dir")
-        .arg(format!("{WEB_OUTPUT_DIR}/wasm"))
+        .args(["--target", "web"])
+        .args(["--out-dir", &format!("{WEB_OUTPUT_DIR}/wasm")])
         .status()?
         .early_ret()?;
 
