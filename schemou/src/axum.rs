@@ -23,6 +23,7 @@ where
             .await
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
+        // TODO: Check that all bytes are consumed in deserialization
         Ok(Self(
             T::deserialize(&bytes)
                 .map_err(|_| StatusCode::BAD_REQUEST)?
