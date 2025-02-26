@@ -1,10 +1,13 @@
 pub mod legos;
 
+mod axum;
 mod error;
 mod impls;
 
+#[cfg(feature = "axum")]
+pub use axum::Schemou;
 pub use error::SerdeError;
-pub use schemou_macro::Schemou;
+pub use schemou_macro::Serde;
 
 /// The type that will be used to store the length of the slice.
 pub type LengthPrefix = u32;
@@ -20,7 +23,7 @@ pub trait Serde {
         Self: Sized;
 }
 
-#[derive(Schemou)]
+#[derive(Serde)]
 pub struct RegisterReq {
     pub username: legos::ShortIdStr,
     // TODO: All schemou types should be Hardened and have explicit invarients, no generic de-serialization
@@ -29,7 +32,7 @@ pub struct RegisterReq {
     pub pubkey: Box<[u8]>,
 }
 
-#[derive(Schemou)]
+#[derive(Serde)]
 pub struct RegisterRes {
     pub commit_id: Box<[u8]>,
 }

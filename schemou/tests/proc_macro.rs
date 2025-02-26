@@ -1,6 +1,6 @@
 use schemou::*;
 
-#[derive(Schemou, Debug)]
+#[derive(Serde, Debug)]
 struct Info {
     a: legos::ShortIdStr,
     c: Vec<u8>,
@@ -8,7 +8,7 @@ struct Info {
     e: i32,
 }
 
-#[derive(Schemou, Debug, PartialEq, Eq)]
+#[derive(Serde, Debug, PartialEq, Eq)]
 struct TupleStruct(i32, Vec<u8>);
 
 impl PartialEq for Info {
@@ -17,7 +17,7 @@ impl PartialEq for Info {
     }
 }
 
-#[derive(Schemou, PartialEq, Debug)]
+#[derive(Serde, PartialEq, Debug)]
 enum Foo {
     B,
     C { a: i8, b: u32 },

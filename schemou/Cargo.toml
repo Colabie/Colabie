@@ -6,3 +6,8 @@ edition = "2021"
 [dependencies]
 schemou-macro = { version = "0.1.0", path = "schemou-macro" }
 thiserror = "2.0.11"
+
+axum = { version = "0.8", optional = true }
+
+[features]
+axum = ["dep:axum"]

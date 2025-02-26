@@ -4,7 +4,7 @@ version = "0.0.1-pr"
 edition = "2021"
 
 [dependencies]
-schemou = { path = "../schemou" }
+schemou = { path = "../schemou", features = ["axum"] }
 tokio = { version = "1", features = ["full"] }
 axum = "0.8"
 tower-http = { version = "0.6", features = ["cors", "trace"] }

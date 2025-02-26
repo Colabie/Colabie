@@ -4,7 +4,6 @@ mod utils;
 
 use db::DB;
 use errors::*;
-pub use utils::Schemou;
 
 use schemou::*;
 
