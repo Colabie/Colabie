@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use git2::{Repository, Signature};
+use git2::{Repository, Signature, build, FileMode};
 use nanoserde::{DeRon, SerRon};
 use tokio::{sync::Mutex, task::spawn_blocking};
 
@@ -33,7 +33,7 @@ impl DB {
     }
 
     pub async fn new_record(&self, username: String, pubkey: String) -> git2::Oid {
-        let record = Record { username, pubkey };
+        let record = Record { username: username.clone(), pubkey };
 
         let db = self.clone();
         let handle = tokio::runtime::Handle::current();
@@ -44,6 +44,7 @@ impl DB {
                 .blob(record.serialize_ron().as_bytes())?;
 
             {
+
                 let repo = handle.block_on(async { db.git.lock().await });
                 let sig = Signature::now(AUTHOR, AUTHOR)?;
 
@@ -56,16 +57,13 @@ impl DB {
                     .find_commit(reference.target().unwrap())
                     .expect("head commit");
 
-                // TODO: Break registrie records into subdirs like "duskyelf" -> "du/sk/duskyelf"
-                // labels: enhancement, good first issue
-                // Issue URL: https://github.com/Colabie/Colabie/issues/8
-                let mut tree_builder = repo
-                    .treebuilder(Some(&last_commit.tree()?))
-                    .expect("Tree building");
+                let mut tree_builder = build::TreeUpdateBuilder::new();
 
-                tree_builder.insert(&record.username, blob, 0o100644)?;
+                let entry  = format!("{}/{}/{}", &username[0..2], &username[2..4], &username);
+                tree_builder.upsert(&entry, blob, FileMode::Blob);
 
-                let tree = repo.find_tree(tree_builder.write()?)?;
+                let tree_id = tree_builder.create_updated(&repo, &last_commit.tree()?)?;
+                let tree = repo.find_tree(tree_id)?;
 
                 // clippy suggested code errors out - https://github.com/rust-lang/rust-clippy/issues/9794
                 #[allow(clippy::let_and_return)]
@@ -101,13 +99,15 @@ impl DB {
                 .target()
                 .unwrap();
 
+            let path = format!("{}/{}/{}", &username[0..2], &username[2..4], &username);
+            let path = std::path::Path::new(&path);
             let blob_id = handle
                 .block_on(db.git.lock())
                 .find_commit(commit_id)
                 .expect("head commit")
                 .tree()
                 .unwrap()
-                .get_name(&username)?
+                .get_path(&path).unwrap()
                 .id();
 
             let record = DeRon::deserialize_ron(
