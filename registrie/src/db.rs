@@ -5,20 +5,12 @@ use nanoserde::{DeRon, SerRon};
 use tokio::{sync::Mutex, task::spawn_blocking};
 
 use crate::erout;
+use registrie::*;
 
 #[derive(Clone)]
 pub struct DB {
     git: Arc<Mutex<Repository>>,
 }
-
-#[derive(DeRon, SerRon)]
-pub struct Record {
-    username: String,
-    pubkey: String,
-}
-
-const AUTHOR: &str = "registrie";
-const DEFAULT_BRANCH: &str = "main";
 
 impl DB {
     // This function blocks on fs operations
@@ -43,11 +35,11 @@ impl DB {
 
         spawn_blocking(move || {
             let blob = handle
-                .block_on(async { db.git.lock().await })
+                .block_on(db.git.lock())
                 .blob(record.serialize_ron().as_bytes())?;
 
             {
-                let repo = handle.block_on(async { db.git.lock().await });
+                let repo = handle.block_on(db.git.lock());
                 let sig = Signature::now(AUTHOR, AUTHOR)?;
 
                 let reference = repo
