@@ -62,7 +62,7 @@ impl DB {
                 let entry  = if *&username.len() > 3 {
                     format!("{}/{}/{}", &username[0..2], &username[2..4], &username)
                 } else {
-                    format!("{}/{}/{}", &username[0..2], &username[1..3], &username)
+                    format!("{}/{}/{}", &username[0..2], &username[2..3], &username)
                 };
 
                 tree_builder.upsert(&entry, blob, FileMode::Blob);
@@ -108,7 +108,7 @@ impl DB {
             let path = if *&username.len() > 3 {
                 format!("{}/{}/{}", &username[0..2], &username[2..4], &username)
             } else {
-                format!("{}/{}/{}", &username[0..2], &username[1..3], &username)
+                format!("{}/{}/{}", &username[0..2], &username[2..3], &username)
             };
 
             let path = std::path::Path::new(&path);
