@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use git2::{Repository, Signature, build, FileMode};
+use git2::{build, FileMode, Repository, Signature};
 use nanoserde::{DeRon, SerRon};
 use tokio::{sync::Mutex, task::spawn_blocking};
 
@@ -33,7 +33,10 @@ impl DB {
     }
 
     pub async fn new_record(&self, username: String, pubkey: String) -> git2::Oid {
-        let record = Record { username: username.clone(), pubkey };
+        let record = Record {
+            username: username.clone(),
+            pubkey,
+        };
 
         let db = self.clone();
         let handle = tokio::runtime::Handle::current();
@@ -44,7 +47,6 @@ impl DB {
                 .blob(record.serialize_ron().as_bytes())?;
 
             {
-
                 let repo = handle.block_on(async { db.git.lock().await });
                 let sig = Signature::now(AUTHOR, AUTHOR)?;
 
@@ -59,14 +61,13 @@ impl DB {
 
                 let mut tree_builder = build::TreeUpdateBuilder::new();
 
-                let entry  = if *&username.len() > 3 {
+                let entry = if username.len() > 3 {
                     format!("{}/{}/{}", &username[0..2], &username[2..4], &username)
                 } else {
                     format!("{}/{}/{}", &username[0..2], &username[2..3], &username)
                 };
 
                 tree_builder.upsert(&entry, blob, FileMode::Blob);
-
 
                 let tree_id = tree_builder.create_updated(&repo, &last_commit.tree()?)?;
                 let tree = repo.find_tree(tree_id)?;
@@ -105,7 +106,7 @@ impl DB {
                 .target()
                 .unwrap();
 
-            let path = if *&username.len() > 3 {
+            let path = if username.len() > 3 {
                 format!("{}/{}/{}", &username[0..2], &username[2..4], &username)
             } else {
                 format!("{}/{}/{}", &username[0..2], &username[2..3], &username)
@@ -118,7 +119,8 @@ impl DB {
                 .expect("head commit")
                 .tree()
                 .unwrap()
-                .get_path(&path).unwrap()
+                .get_path(path)
+                .unwrap()
                 .id();
 
             let record = DeRon::deserialize_ron(
