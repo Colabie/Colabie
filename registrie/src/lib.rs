@@ -27,6 +27,7 @@ pub fn record_path(username: &ShortIdStr) -> String {
         )
     } else {
         // TODO: Constrain ShortIdStr to a minimum of 3 chars in schemou
+        // Issue URL: https://github.com/Colabie/Colabie/issues/31
         // labels: good first issue, enhancement
         format!(
             "{}/{}/{}",
