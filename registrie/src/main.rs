@@ -13,11 +13,10 @@ use axum::{
     routing::post,
     Router,
 };
-use base64::{prelude::BASE64_STANDARD, Engine};
 use tower_http::{cors, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-const DB_PATH: &str = "db";
+const DB_PATH: &str = "locals/db";
 
 #[tokio::main]
 async fn main() {
@@ -56,14 +55,8 @@ async fn main() {
 
 async fn register(
     State(db): State<DB>,
-    Schemou(register_req): Schemou<RegisterReq>,
+    Schemou(RegisterReq { username, pubkey }): Schemou<RegisterReq>,
 ) -> RegistrieResult<Schemou<RegisterRes>> {
-    let pubkey = BASE64_STANDARD.encode(&register_req.pubkey);
-    let commit_id = db
-        .new_record((*register_req.username).clone(), pubkey)
-        .await
-        .as_bytes()
-        .into();
-
+    let commit_id = db.new_record(username, pubkey).await.as_bytes().into();
     Ok(Schemou(RegisterRes { commit_id }))
 }

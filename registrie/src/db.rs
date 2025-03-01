@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use git2::{build, FileMode, Repository, Signature};
-use nanoserde::{DeRon, SerRon};
-use tokio::{sync::Mutex, task::spawn_blocking};
+use git2::{Oid, Repository, Signature};
+use schemou::legos::ShortIdStr;
+use tokio::sync::Mutex;
 
 use crate::erout;
 use registrie::*;
@@ -24,113 +24,10 @@ impl DB {
         Self { git }
     }
 
-    pub async fn new_record(&self, username: String, pubkey: String) -> git2::Oid {
-        let record = Record {
-            username: username.clone(),
-            pubkey,
-        };
-
-        let db = self.clone();
-        let handle = tokio::runtime::Handle::current();
-
-        spawn_blocking(move || {
-            let blob = handle
-                .block_on(db.git.lock())
-                .blob(record.serialize_ron().as_bytes())?;
-
-            {
-                let repo = handle.block_on(db.git.lock());
-                let sig = Signature::now(AUTHOR, AUTHOR)?;
-
-                let reference = repo
-                    .find_branch(DEFAULT_BRANCH, git2::BranchType::Local)
-                    .expect("Defautl Branch")
-                    .into_reference();
-
-                let last_commit = repo
-                    .find_commit(reference.target().unwrap())
-                    .expect("head commit");
-
-                let mut tree_builder = build::TreeUpdateBuilder::new();
-
-                let entry = if username.len() > 3 {
-                    format!("{}/{}/{}", &username[0..2], &username[2..4], &username)
-                } else {
-                    format!("{}/{}/{}", &username[0..2], &username[2..3], &username)
-                };
-
-                tree_builder.upsert(&entry, blob, FileMode::Blob);
-
-                let tree_id = tree_builder.create_updated(&repo, &last_commit.tree()?)?;
-                let tree = repo.find_tree(tree_id)?;
-
-                // clippy suggested code errors out - https://github.com/rust-lang/rust-clippy/issues/9794
-                #[allow(clippy::let_and_return)]
-                // TODO: Sign registrie's git commits
-                // labels: enhancement
-                // Issue URL: https://github.com/Colabie/Colabie/issues/7
-                let x = repo.commit(
-                    reference.name(),
-                    &sig,
-                    &sig,
-                    &format!("Register: {}", record.username),
-                    &tree,
-                    &[&last_commit],
-                );
-                x
-            }
-        })
-        .await
-        .unwrap()
-        .unwrap()
-    }
-
-    pub async fn fetch_record(&self, username: String) -> Option<Record> {
-        let handle = tokio::runtime::Handle::current();
-
-        let db = self.clone();
-        spawn_blocking(move || {
-            let commit_id = handle
-                .block_on(db.git.lock())
-                .find_branch(DEFAULT_BRANCH, git2::BranchType::Local)
-                .expect("Defautl Branch")
-                .into_reference()
-                .target()
-                .unwrap();
-
-            let path = if username.len() > 3 {
-                format!("{}/{}/{}", &username[0..2], &username[2..4], &username)
-            } else {
-                format!("{}/{}/{}", &username[0..2], &username[2..3], &username)
-            };
-
-            let path = std::path::Path::new(&path);
-            let blob_id = handle
-                .block_on(db.git.lock())
-                .find_commit(commit_id)
-                .expect("head commit")
-                .tree()
-                .unwrap()
-                .get_path(path)
-                .unwrap()
-                .id();
-
-            let record = DeRon::deserialize_ron(
-                std::str::from_utf8(
-                    handle
-                        .block_on(db.git.lock())
-                        .find_blob(blob_id)
-                        .unwrap()
-                        .content(),
-                )
-                .expect("Utf-8 str"),
-            )
-            .expect("Valid record");
-
-            Some(record)
-        })
-        .await
-        .unwrap()
+    pub async fn new_record(&self, username: ShortIdStr, pubkey: Box<[u8]>) -> Oid {
+        new_record(self.git.clone(), username, pubkey)
+            .await
+            .expect("Git database not accessible")
     }
 
     fn init_repo(path: &str) -> Result<Repository, git2::Error> {
@@ -148,8 +45,7 @@ impl DB {
                 &[]
             )))?;
 
-            repo.branch(DEFAULT_BRANCH, &commit, false)
-                .expect("Default branch");
+            erout!(repo.branch(DEFAULT_BRANCH, &commit, false));
         }
         Ok(repo)
     }
@@ -157,6 +53,9 @@ impl DB {
 
 #[cfg(test)]
 mod db_tests {
+    use base64::{prelude::BASE64_STANDARD, Engine};
+    use registrie::lookup_record;
+    use schemou::legos::ShortIdStr;
     use tokio::task::spawn_blocking;
 
     use super::DB;
@@ -172,18 +71,18 @@ mod db_tests {
                 .unwrap()
         };
 
-        let username = "DuskyElf".to_string();
-        let pubkey = "this is a test public key".to_string();
+        let username = ShortIdStr::new("duskyelf").unwrap();
+        let pubkey: Box<[u8]> = [1, 2, 3, 13, 42].into();
 
         db.new_record(username.clone(), pubkey.clone()).await;
 
-        let record = db
-            .fetch_record(username.clone())
-            .await
-            .expect("implementation");
+        let record = lookup_record(db.git, username.clone()).await.unwrap();
 
-        assert_eq!(username, record.username);
-        assert_eq!(pubkey, record.pubkey);
+        assert_eq!(*username, record.username);
+        assert_eq!(
+            pubkey,
+            BASE64_STANDARD.decode(record.pubkey).unwrap().into()
+        );
 
         fs::remove_dir_all(path).unwrap();
     }
