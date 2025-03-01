@@ -59,8 +59,14 @@ impl DB {
 
                 let mut tree_builder = build::TreeUpdateBuilder::new();
 
-                let entry  = format!("{}/{}/{}", &username[0..2], &username[2..4], &username);
+                let entry  = if *&username.len() > 3 {
+                    format!("{}/{}/{}", &username[0..2], &username[2..4], &username)
+                } else {
+                    format!("{}/{}/{}", &username[0..2], &username[1..3], &username)
+                };
+
                 tree_builder.upsert(&entry, blob, FileMode::Blob);
+
 
                 let tree_id = tree_builder.create_updated(&repo, &last_commit.tree()?)?;
                 let tree = repo.find_tree(tree_id)?;
@@ -99,7 +105,12 @@ impl DB {
                 .target()
                 .unwrap();
 
-            let path = format!("{}/{}/{}", &username[0..2], &username[2..4], &username);
+            let path = if *&username.len() > 3 {
+                format!("{}/{}/{}", &username[0..2], &username[2..4], &username)
+            } else {
+                format!("{}/{}/{}", &username[0..2], &username[1..3], &username)
+            };
+
             let path = std::path::Path::new(&path);
             let blob_id = handle
                 .block_on(db.git.lock())
