@@ -5,6 +5,8 @@ on:
     branches: [ "main" ]
 
 env:
+  # Make sure CI fails on all warnings, including Clippy lints
+  RUSTFLAGS: "-Dwarnings"
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -14,7 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-#    - name: Build
-#      run: cargo build --verbose
+    - name: Check and Lint
+      run: cargo clippy --verbose
     - name: Build and Test
       run: cargo test --verbose
