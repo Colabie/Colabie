@@ -14,9 +14,7 @@ impl ShortIdStr {
                 "string length exceeded 255 characters".to_string(),
             ));
         } else if bytes.len() < 3 {
-            return Err(Self::error(
-                "string length below 3 characters".to_string(),
-            ));
+            return Err(Self::error("string length below 3 characters".to_string()));
         }
 
         let invalid_char = bytes.iter().find(|&i| {
