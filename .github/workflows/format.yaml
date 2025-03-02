@@ -1,0 +1,29 @@
+name: rustfmt
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: write
+    steps:
+      - uses: "actions/checkout@v4"
+      - name: rustfmt
+        run: cargo fmt --all
+      - name: Set Git user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Commit and Push Changes
+        run: |
+          git add -A
+          if [[ `git status --porcelain` ]]; then
+            git commit -m "Rustfmt"
+            git push origin main
+          else
+            echo "No changes to commit"
+          fi
