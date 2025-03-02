@@ -1439,6 +1439,7 @@ dependencies = [
 name = "schemou"
 version = "0.0.1-pr"
 dependencies = [
+ "axum",
  "schemou-macro",
  "thiserror 2.0.11",
 ]
