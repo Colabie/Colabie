@@ -40,12 +40,12 @@ pub async fn register(username: &str) -> Result<(), JsValue> {
     // Issue URL: https://github.com/Colabie/Colabie/issues/5
     save_raw("sk_key", &sk_key);
 
-    let register = RegisterReq {
+    let register = C2RRegister {
         username,
         pubkey: pb_key,
     };
 
-    let (resp, _) = RegisterRes::deserialize(
+    let (resp, _) = R2CRegister::deserialize(
         &post_raw(
             "http://localhost:8081/register",
             &register.serialize_buffered(),
