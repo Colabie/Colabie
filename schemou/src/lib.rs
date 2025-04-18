@@ -59,4 +59,3 @@ pub enum S2CAuthResult {
     Success,
     Failure,
 }
-
