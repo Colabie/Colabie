@@ -70,6 +70,7 @@ impl<T: Serde> Serde for Box<T> {
         Self: Sized,
     {
         // TODO: Don't copy from stack, deserialize on the heap
+        // Issue URL: https://github.com/Colabie/Colabie/issues/53
         // labels: help wanted, enhancement
         T::deserialize(data).map(|(t, l)| (Box::new(t), l))
     }

@@ -74,6 +74,7 @@ async fn new_user(
     socket.send(auth_req.serialize_buffered().into()).await?;
 
     // TODO: Verify the User and signed random
+    // Issue URL: https://github.com/Colabie/Colabie/issues/54
     // coupled with #4
     let C2SAuthRes { signed_random: _ } = recv(&mut socket).await?;
     socket
