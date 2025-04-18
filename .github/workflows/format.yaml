@@ -1,9 +1,9 @@
 name: rustfmt
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Create issues from TODOs"]
+    types: [completed]
 
 jobs:
   build:
