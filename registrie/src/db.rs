@@ -76,7 +76,10 @@ mod db_tests {
 
         db.new_record(username.clone(), pubkey.clone()).await;
 
-        let record = lookup_record(db.git, username.clone()).await.unwrap();
+        let record = lookup_record(db.git, username.clone())
+            .await
+            .unwrap()
+            .unwrap();
 
         assert_eq!(*username, record.username);
         assert_eq!(

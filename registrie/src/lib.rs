@@ -26,9 +26,6 @@ pub fn record_path(username: &ShortIdStr) -> String {
             username.as_str()
         )
     } else {
-        // TODO: Constrain ShortIdStr to a minimum of 3 chars in schemou
-        // Issue URL: https://github.com/Colabie/Colabie/issues/31
-        // labels: good first issue, enhancement
         format!(
             "{}/{}/{}",
             &username[0..2],
@@ -98,7 +95,7 @@ pub async fn new_record(
 pub async fn lookup_record(
     git: Arc<Mutex<Repository>>,
     username: ShortIdStr,
-) -> Result<Record, Error> {
+) -> Result<Option<Record>, Error> {
     // As git2 operations are blocking, we wrap those with `spawn_blocking()`
     // but then to keep track of the db lock from the async enviorment, ie. `tokio::sync::Mutex`
     // the blocking task waits `tokio::runtime_handle::block_on()` for the mutex lock
@@ -108,14 +105,20 @@ pub async fn lookup_record(
         let path: String = record_path(&username);
         let path = std::path::Path::new(&path);
 
-        let tree_entry = handle
-            .block_on(git.lock())
-            .find_branch(DEFAULT_BRANCH, git2::BranchType::Local)?
-            .into_reference()
-            .peel_to_commit()
-            .expect("Unreachable: no commit on reference")
-            .tree()?
-            .get_path(path)?;
+        let tree_entry = {
+            let repo = handle.block_on(git.lock());
+            let tree = repo
+                .find_branch(DEFAULT_BRANCH, git2::BranchType::Local)?
+                .into_reference()
+                .peel_to_commit()
+                .expect("Unreachable: no commit on reference")
+                .tree()?;
+
+            match tree.get_path(path) {
+                Ok(tree_entry) => tree_entry,
+                Err(_) => return Ok(None),
+            }
+        };
 
         let record = {
             let repo = handle.block_on(git.lock());
@@ -131,7 +134,7 @@ pub async fn lookup_record(
             Record::deserialize_ron(raw_record).expect("Unreachable: unparsable record")
         };
 
-        Ok::<_, Error>(record)
+        Ok::<_, Error>(Some(record))
     })
     .await
     .unwrap()
