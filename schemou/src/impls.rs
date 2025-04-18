@@ -1,5 +1,80 @@
 use crate::*;
 
+impl<const N: usize> Serde for [u8; N] {
+    fn serialize(&self, output: &mut Vec<u8>) -> usize {
+        let prefix_len = match N {
+            n if n < u8::MAX as usize => {
+                output.extend_from_slice(&(N as u8).to_be_bytes());
+                std::mem::size_of::<u8>()
+            }
+            n if n < u16::MAX as usize => {
+                output.extend_from_slice(&(N as u16).to_be_bytes());
+                std::mem::size_of::<u16>()
+            }
+            _ => panic!("bigger values are not supported"),
+        };
+
+        output.extend_from_slice(self);
+        self.len() + prefix_len
+    }
+
+    fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError>
+    where
+        Self: Sized,
+    {
+        let (prefix_len, len) = match N {
+            n if n < u8::MAX as usize => {
+                let prefix_len = std::mem::size_of::<u8>();
+                (
+                    prefix_len,
+                    u8::from_be_bytes(
+                        data.get(0..prefix_len)
+                            .ok_or(SerdeError::NotEnoughData)?
+                            .try_into()
+                            .unwrap(),
+                    ) as usize,
+                )
+            }
+            n if n < u16::MAX as usize => {
+                let prefix_len = std::mem::size_of::<u16>();
+                (
+                    prefix_len,
+                    u16::from_be_bytes(
+                        data.get(0..prefix_len)
+                            .ok_or(SerdeError::NotEnoughData)?
+                            .try_into()
+                            .unwrap(),
+                    ) as usize,
+                )
+            }
+            _ => unreachable!("bigger values are not supported"),
+        };
+
+        Ok((
+            data.get(prefix_len..len + prefix_len)
+                .ok_or(SerdeError::NotEnoughData)?
+                .try_into()
+                .expect("unreachable"),
+            prefix_len + len,
+        ))
+    }
+}
+
+impl<T: Serde> Serde for Box<T> {
+    fn serialize(&self, output: &mut Vec<u8>) -> usize {
+        T::serialize(self, output)
+    }
+
+    fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError>
+    where
+        Self: Sized,
+    {
+        // TODO: Don't copy from stack, deserialize on the heap
+        // labels: help wanted, enhancement
+        T::deserialize(data).map(|(t, l)| (Box::new(t), l))
+    }
+}
+
 impl Serde for Box<[u8]> {
     fn serialize(&self, output: &mut Vec<u8>) -> usize {
         serialize_with_length_prefix(self, output)

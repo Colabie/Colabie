@@ -23,6 +23,8 @@ pub trait Serde {
         Self: Sized;
 }
 
+const AUTH_SIZE: usize = 2048;
+
 #[derive(Serde)]
 pub struct C2RRegister {
     pub username: legos::ShortIdStr,
@@ -36,3 +38,25 @@ pub struct C2RRegister {
 pub struct R2CRegister {
     pub commit_id: Box<[u8]>,
 }
+
+#[derive(Serde)]
+pub struct C2SAck {
+    pub username: legos::ShortIdStr,
+}
+
+#[derive(Serde)]
+pub struct S2CAuthReq {
+    pub random: [u8; AUTH_SIZE],
+}
+
+#[derive(Serde)]
+pub struct C2SAuthRes {
+    pub signed_random: Box<[u8]>,
+}
+
+#[derive(Serde)]
+pub enum S2CAuthResult {
+    Success,
+    Failure,
+}
+
