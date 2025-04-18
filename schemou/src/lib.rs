@@ -24,7 +24,7 @@ pub trait Serde {
 }
 
 #[derive(Serde)]
-pub struct RegisterReq {
+pub struct C2RRegister {
     pub username: legos::ShortIdStr,
     // TODO: All schemou types should be Hardened and have explicit invarients, no generic de-serialization
     // labels: enhancement, help wanted
@@ -33,6 +33,6 @@ pub struct RegisterReq {
 }
 
 #[derive(Serde)]
-pub struct RegisterRes {
+pub struct R2CRegister {
     pub commit_id: Box<[u8]>,
 }

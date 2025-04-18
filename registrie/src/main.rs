@@ -55,8 +55,8 @@ async fn main() {
 
 async fn register(
     State(db): State<DB>,
-    Schemou(RegisterReq { username, pubkey }): Schemou<RegisterReq>,
-) -> RegistrieResult<Schemou<RegisterRes>> {
+    Schemou(C2RRegister { username, pubkey }): Schemou<C2RRegister>,
+) -> RegistrieResult<Schemou<R2CRegister>> {
     let commit_id = db.new_record(username, pubkey).await.as_bytes().into();
-    Ok(Schemou(RegisterRes { commit_id }))
+    Ok(Schemou(R2CRegister { commit_id }))
 }
