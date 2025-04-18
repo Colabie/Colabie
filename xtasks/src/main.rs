@@ -5,6 +5,7 @@ use std::{env, io};
 
 mod clientie;
 mod registrie;
+mod servie;
 
 fn print_usage() {
     eprintln!("[xtask]: Usage: cargo x <command>");
@@ -14,6 +15,8 @@ fn print_usage() {
     eprintln!("[xtask]:     watch-clientie");
     eprintln!("[xtask]:     serve-registrie");
     eprintln!("[xtask]:     watch-registrie");
+    eprintln!("[xtask]:     serve-servie");
+    eprintln!("[xtask]:     watch-servie");
 }
 
 fn main() -> io::Result<()> {
@@ -44,6 +47,12 @@ fn main() -> io::Result<()> {
             registrie::serve()
         }
         "watch-registrie" => watch("registrie/src", "run --package xtasks serve-registrie"),
+
+        "serve-servie" => {
+            servie::build()?;
+            servie::serve()
+        }
+        "watch-servie" => watch("servie/src", "run --package xtasks serve-servie"),
 
         command => {
             eprintln!("[xtask]: Error: Invalid command `{command}`");
