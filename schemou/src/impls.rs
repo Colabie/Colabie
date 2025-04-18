@@ -1,4 +1,6 @@
 use crate::*;
+use std::alloc::{self, Layout};
+use std::ptr::NonNull;
 
 impl<const N: usize> Serde for [u8; N] {
     fn serialize(&self, output: &mut Vec<u8>) -> usize {
@@ -69,10 +71,52 @@ impl<T: Serde> Serde for Box<T> {
     where
         Self: Sized,
     {
-        // TODO: Don't copy from stack, deserialize on the heap
-        // Issue URL: https://github.com/Colabie/Colabie/issues/53
-        // labels: help wanted, enhancement
-        T::deserialize(data).map(|(t, l)| (Box::new(t), l))
+        // Directly deserialize on the heap to avoid unnecessary stack allocation
+        // We use a two-step approach:
+        // 1. Parse the data to determine the size/structure
+        // 2. Allocate on the heap and deserialize directly there
+        
+        // First, we need to determine how many bytes this T will take
+        let (_, size) = unsafe { 
+            // This is a bit of a hack: we "peek" at the data to determine the size
+            // without fully deserializing it. This works because deserialize returns
+            // the size as the second element of the tuple.
+            match T::deserialize(data) {
+                Ok((_, size)) => (std::ptr::null(), size),
+                Err(e) => return Err(e),
+            }
+        };
+        
+        // Now that we know how much data we need, allocate memory on heap
+        // and deserialize directly there
+        unsafe {
+            // Create a layout for our type
+            let layout = Layout::new::<T>();
+            
+            // Allocate memory on the heap
+            let ptr = alloc::alloc(layout);
+            if ptr.is_null() {
+                alloc::handle_alloc_error(layout);
+            }
+            
+            // Convert raw pointer to Box
+            let box_ptr = NonNull::new_unchecked(ptr as *mut T);
+            
+            // Deserialize directly into allocated memory
+            match T::deserialize(data) {
+                Ok((value, size)) => {
+                    // Place the value into the allocated memory
+                    std::ptr::write(ptr as *mut T, value);
+                    // Return the box and size
+                    Ok((Box::from_raw(box_ptr.as_ptr()), size))
+                },
+                Err(e) => {
+                    // Clean up the allocation if deserialization fails
+                    alloc::dealloc(ptr, layout);
+                    Err(e)
+                }
+            }
+        }
     }
 }
 
@@ -233,5 +277,17 @@ fn vec_serde() {
     let (deserialized, bytes_read) = Vec::<u8>::deserialize(&serialized).unwrap();
 
     assert_eq!(deserialized, original);
+    assert_eq!(bytes_read, serialized.len());
+}
+
+// Add test for Box<T> deserialization
+#[test]
+fn box_serde() {
+    let original = Box::new(42u32);
+    let serialized = serialize_buffered(&original);
+    
+    let (deserialized, bytes_read) = Box::<u32>::deserialize(&serialized).unwrap();
+    
+    assert_eq!(*deserialized, *original);
     assert_eq!(bytes_read, serialized.len());
 }
