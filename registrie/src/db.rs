@@ -9,7 +9,7 @@ use registrie::*;
 
 #[derive(Clone)]
 pub struct DB {
-    git: Arc<Mutex<Repository>>,
+    pub git: Arc<Mutex<Repository>>,
 }
 
 impl DB {

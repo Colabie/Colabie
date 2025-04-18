@@ -6,12 +6,14 @@ use db::DB;
 use errors::*;
 
 use schemou::*;
+use schemou::legos::ShortIdStr;
 
 use axum::{
-    extract::State,
-    http::{header, Method},
-    routing::post,
-    Router,
+    extract::{Path, State},
+    http::{header, Method, StatusCode},
+    response::IntoResponse,
+    routing::{get, post},
+    Json, Router,
 };
 use tower_http::{cors, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -38,6 +40,7 @@ async fn main() {
 
     let router = Router::new()
         .route("/register", post(register))
+        .route("/check_username/:username", get(check_username))
         .with_state(db)
         .layer(cors)
         .layer(
@@ -59,4 +62,23 @@ async fn register(
 ) -> RegistrieResult<Schemou<R2CRegister>> {
     let commit_id = db.new_record(username, pubkey).await.as_bytes().into();
     Ok(Schemou(R2CRegister { commit_id }))
+}
+
+// Endpoint to check if a username already exists
+async fn check_username(
+    State(db): State<DB>,
+    Path(username): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    // Try to parse the username
+    let username = match ShortIdStr::new(username) {
+        Ok(username) => username,
+        Err(e) => return Err((StatusCode::BAD_REQUEST, format!("Invalid username: {e}"))),
+    };
+
+    // Check if the username exists in the database
+    match registrie::lookup_record(db.git, username).await {
+        Ok(Some(_)) => Ok(Json(true)),  // Username exists
+        Ok(None) => Ok(Json(false)),    // Username doesn't exist
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {e}"))),
+    }
 }
