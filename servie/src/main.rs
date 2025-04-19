@@ -15,9 +15,6 @@ use rand::prelude::*;
 use rand_chacha::ChaCha20Rng;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-const MIRROR_PATH: &str = "locals/db-dummy-mirror";
-const REGISTRIE_URL: &str = "https://github.com/Colabie/registrie-mirror";
-
 #[derive(Clone)]
 struct AppState {
     mirror: Mirror,
@@ -34,8 +31,11 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    tracing::info!("loading .env");
+    dotenvy::dotenv().expect("Failed to load .env file");
+
     let appstate = AppState {
-        mirror: Mirror::open_or_create(REGISTRIE_URL.into(), MIRROR_PATH.into())
+        mirror: Mirror::open_or_create()
             .await
             .expect("Could not connect to the DB"),
     };

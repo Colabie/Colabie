@@ -1,7 +1,7 @@
 use registrie::{lookup_record, Record, DEFAULT_BRANCH};
 use schemou::legos::ShortIdStr;
 
-use std::sync::Arc;
+use std::{fs, sync::Arc};
 
 use git2::{build::RepoBuilder, Error, Repository};
 use tokio::{sync::Mutex, task::spawn_blocking};
@@ -14,7 +14,21 @@ pub struct Mirror {
 impl Mirror {
     // This function blocks on io operations
     // That's fine as it's called once at the very start
-    pub async fn open_or_create(url: String, path: String) -> Result<Self, Error> {
+    pub async fn open_or_create() -> Result<Self, Error> {
+        let path = std::env::var("MIRROR_PATH").expect("MIRROR_PATH environment variable not set");
+        let url = {
+            let upstream_url_env =
+                std::env::var("UPSTREAM_URL").expect("UPSTREAM_URL environment variable not set");
+
+            if upstream_url_env.starts_with("https://") {
+                upstream_url_env
+            } else {
+                let path =
+                    fs::canonicalize(&upstream_url_env).expect("Failed to canonicalize local path");
+                format!("file://{}", path.to_str().expect("Invalid UTF-8 in path"))
+            }
+        };
+
         let mirror = if let Ok(repo) = Repository::open_bare(&path) {
             let mirror = Self {
                 git: Arc::new(Mutex::new(repo)),
