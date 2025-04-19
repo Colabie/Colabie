@@ -1,7 +1,7 @@
 use xtasks::*;
 
-use std::{env, io, path};
 use std::process::Command;
+use std::{env, io, path};
 
 pub fn build() -> io::Result<()> {
     println!("[xtask]: Building servie");
