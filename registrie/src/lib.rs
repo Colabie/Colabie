@@ -47,46 +47,43 @@ pub async fn new_record(
 
     // As git2 operations are blocking, we wrap those with `spawn_blocking()`
     // but then to keep track of the db lock from the async enviorment, ie. `tokio::sync::Mutex`
-    // the blocking task waits `tokio::runtime_handle::block_on()` for the mutex lock
-    let handle = tokio::runtime::Handle::current();
+    // the blocking task waits `git.blocking_lock()` for the mutex lock
 
     spawn_blocking(move || {
         let data = record.serialize_ron();
-        let blob = handle.block_on(git.lock()).blob(data.as_bytes())?;
+        let blob = git.blocking_lock().blob(data.as_bytes())?;
 
         // The above lock gets freed and retaken below, as writting a blob is independent
         // So here some other task could use the db
 
-        {
-            let repo = handle.block_on(git.lock());
-            let sig = Signature::now(AUTHOR, AUTHOR)?;
+        let repo = git.blocking_lock();
+        let sig = Signature::now(AUTHOR, AUTHOR)?;
 
-            let reference = repo
-                .find_branch(DEFAULT_BRANCH, git2::BranchType::Local)?
-                .into_reference();
+        let reference = repo
+            .find_branch(DEFAULT_BRANCH, git2::BranchType::Local)?
+            .into_reference();
 
-            let last_commit = reference
-                .peel_to_commit()
-                .expect("Unreachable: no commit on reference");
+        let last_commit = reference
+            .peel_to_commit()
+            .expect("Unreachable: no commit on reference");
 
-            let tree = repo.find_tree(
-                build::TreeUpdateBuilder::new()
-                    .upsert(record_path(&username), blob, FileMode::Blob)
-                    .create_updated(&repo, &last_commit.tree()?)?,
-            )?;
+        let tree = repo.find_tree(
+            build::TreeUpdateBuilder::new()
+                .upsert(record_path(&username), blob, FileMode::Blob)
+                .create_updated(&repo, &last_commit.tree()?)?,
+        )?;
 
-            // TODO: Sign registrie's git commits
-            // labels: enhancement
-            // Issue URL: https://github.com/Colabie/Colabie/issues/7
-            repo.commit(
-                reference.name(),
-                &sig,
-                &sig,
-                &format!("Register: {}", record.username),
-                &tree,
-                &[&last_commit],
-            )
-        }
+        // TODO: Sign registrie's git commits
+        // labels: enhancement
+        // Issue URL: https://github.com/Colabie/Colabie/issues/7
+        repo.commit(
+            reference.name(),
+            &sig,
+            &sig,
+            &format!("Register: {}", record.username),
+            &tree,
+            &[&last_commit],
+        )
     })
     .await
     .unwrap()
@@ -98,15 +95,14 @@ pub async fn lookup_record(
 ) -> Result<Option<Record>, Error> {
     // As git2 operations are blocking, we wrap those with `spawn_blocking()`
     // but then to keep track of the db lock from the async enviorment, ie. `tokio::sync::Mutex`
-    // the blocking task waits `tokio::runtime_handle::block_on()` for the mutex lock
-    let handle = tokio::runtime::Handle::current();
+    // the blocking task waits `git.blocking_lock()` for the mutex lock
 
     spawn_blocking(move || {
         let path: String = record_path(&username);
         let path = std::path::Path::new(&path);
+        let repo = git.blocking_lock();
 
         let tree_entry = {
-            let repo = handle.block_on(git.lock());
             let tree = repo
                 .find_branch(DEFAULT_BRANCH, git2::BranchType::Local)?
                 .into_reference()
@@ -121,8 +117,6 @@ pub async fn lookup_record(
         };
 
         let record = {
-            let repo = handle.block_on(git.lock());
-
             let blob = tree_entry
                 .to_object(&repo)?
                 .into_blob()

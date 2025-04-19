@@ -50,17 +50,11 @@ impl Mirror {
 
     pub async fn fetch_db(&self) -> Result<(), Error> {
         tracing::info!("fetching registrie");
-        let handle = tokio::runtime::Handle::current();
         let repo = self.clone();
         spawn_blocking(move || {
-            handle
-                .block_on(repo.git.lock())
-                .find_remote("origin")?
-                .fetch(&[DEFAULT_BRANCH], None, None)?;
+            let repo = repo.git.blocking_lock();
 
             let (merge_analysis, _) = {
-                let repo = handle.block_on(repo.git.lock());
-
                 let annotated_commit =
                     repo.reference_to_annotated_commit(&repo.find_reference("FETCH_HEAD")?)?;
                 repo.merge_analysis(&[&annotated_commit])?
@@ -71,7 +65,6 @@ impl Mirror {
             }
 
             if merge_analysis.is_fast_forward() {
-                let repo = handle.block_on(repo.git.lock());
                 repo.find_branch(DEFAULT_BRANCH, git2::BranchType::Local)
                     .expect("Default Branch")
                     .into_reference()
