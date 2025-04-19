@@ -21,7 +21,7 @@ pub fn serve() -> io::Result<()> {
         .parent()
         .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Failed to find cargo root"))?;
 
-    env::set_current_dir(&cargo_root.join("servie"))?;
+    env::set_current_dir(cargo_root.join("servie"))?;
 
     Command::new("cargo")
         .arg("run")

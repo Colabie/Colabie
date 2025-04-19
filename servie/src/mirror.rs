@@ -29,7 +29,9 @@ impl Mirror {
             }
         };
 
-        let mirror = if let Ok(repo) = Repository::open_bare(&path) {
+        
+
+        if let Ok(repo) = Repository::open_bare(&path) {
             let mirror = Self {
                 git: Arc::new(Mutex::new(repo)),
             };
@@ -45,9 +47,7 @@ impl Mirror {
                         .clone(&url, std::path::Path::new(&path))?,
                 )),
             })
-        };
-
-        mirror
+        }
     }
 
     pub async fn fetch_db(&self) -> Result<(), Error> {
