@@ -29,8 +29,6 @@ impl Mirror {
             }
         };
 
-        
-
         if let Ok(repo) = Repository::open_bare(&path) {
             let mirror = Self {
                 git: Arc::new(Mutex::new(repo)),
