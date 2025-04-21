@@ -27,7 +27,7 @@ extern "C" {
 pub async fn register(username: &str) -> Result<(), JsValue> {
     // TODO: Check if the username is already registered
     // This is not trivial, needs discussion if we could hit registrie for read calls
-    // labels: help wanted
+    // labels: help wanted, discussion
     // Issue URL: https://github.com/Colabie/Colabie/issues/6
 
     let username = legos::ShortIdStr::new(username)
@@ -36,7 +36,7 @@ pub async fn register(username: &str) -> Result<(), JsValue> {
     let (pb_key, sk_key) = generate_keypair();
 
     // TODO: Save secret key securely in a file instead
-    // labels: enhancement, good first issue
+    // labels: enhancement, discussion
     // Issue URL: https://github.com/Colabie/Colabie/issues/5
     save_raw("sk_key", &sk_key);
 

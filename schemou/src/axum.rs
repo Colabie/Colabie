@@ -24,6 +24,7 @@ where
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
         // TODO: Check that all bytes are consumed in deserialization
+        // labels: enhancement
         // Issue URL: https://github.com/Colabie/Colabie/issues/29
         Ok(Self(
             T::deserialize(&bytes)

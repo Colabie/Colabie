@@ -62,9 +62,13 @@ async fn new_user(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let C2SAck { username } = recv(&mut socket).await?;
 
+    // TODO: Use commit id from the clientie as a hint that registrie might need to be refetched
+    // labels: enhancement, good first issue, discussion
     let _record = mirror
         .lookup_record(username.clone())
         .await
+        // TODO: Ban IPs in case of failed login
+        // labels: enhancement, discussion
         .ok_or("Invalid username")?;
 
     let mut rng = ChaCha20Rng::from_os_rng();
@@ -74,6 +78,7 @@ async fn new_user(
     socket.send(auth_req.serialize_buffered().into()).await?;
 
     // TODO: Verify the User and signed random
+    // labels: enhancement
     // Issue URL: https://github.com/Colabie/Colabie/issues/54
     // coupled with #4
     let C2SAuthRes { signed_random: _ } = recv(&mut socket).await?;

@@ -74,7 +74,7 @@ pub async fn new_record(
         )?;
 
         // TODO: Sign registrie's git commits
-        // labels: enhancement
+        // labels: enhancement, good first issue, discussion
         // Issue URL: https://github.com/Colabie/Colabie/issues/7
         repo.commit(
             reference.name(),
