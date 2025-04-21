@@ -63,11 +63,13 @@ async fn new_user(
     let C2SAck { username } = recv(&mut socket).await?;
 
     // TODO: Use commit id from the clientie as a hint that registrie might need to be refetched
+    // Issue URL: https://github.com/Colabie/Colabie/issues/61
     // labels: enhancement, good first issue, discussion
     let _record = mirror
         .lookup_record(username.clone())
         .await
         // TODO: Ban IPs in case of failed login
+        // Issue URL: https://github.com/Colabie/Colabie/issues/60
         // labels: enhancement, discussion
         .ok_or("Invalid username")?;
 
