@@ -1,9 +1,9 @@
-mod mirror;
+pub mod mirror;
+pub mod user_channels;
 
 use mirror::Mirror;
-use schemou::{C2SAck, C2SAuthRes, S2CAuthReq, S2CAuthResult, Serde};
-
-use std::error::Error;
+use schemou::*;
+use user_channels::{ChannelMsg, ChannelMsgWithSender, SelfChannel, UserChannels};
 
 use axum::{
     extract::{ws::WebSocket, State, WebSocketUpgrade},
@@ -18,6 +18,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 #[derive(Clone)]
 struct AppState {
     mirror: Mirror,
+    user_channels: UserChannels,
 }
 
 #[tokio::main]
@@ -38,6 +39,7 @@ async fn main() {
         mirror: Mirror::open_or_create()
             .await
             .expect("Could not connect to the DB"),
+        user_channels: UserChannels::new(),
     };
 
     let router = Router::new()
@@ -45,21 +47,24 @@ async fn main() {
         .with_state(appstate);
 
     let address = "0.0.0.0:8082";
-    let listner = tokio::net::TcpListener::bind(address).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
     tracing::info!("listening on: http://{}\n", address);
-    axum::serve(listner, router).await.unwrap();
+    axum::serve(listener, router).await.unwrap();
 }
 
 async fn connect(ws: WebSocketUpgrade, State(app_state): State<AppState>) -> impl IntoResponse {
     ws.on_upgrade(|socket| async {
-        _ = new_user(socket, app_state).await;
+        _ = handle_ws(socket, app_state).await;
     })
 }
 
-async fn new_user(
+async fn handle_ws(
     mut socket: WebSocket,
-    AppState { mirror }: AppState,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
+    AppState {
+        mirror,
+        user_channels,
+    }: AppState,
+) -> anyhow::Result<()> {
     let C2SAck { username } = recv(&mut socket).await?;
 
     // TODO: Use commit id from the clientie as a hint that registrie might need to be refetched
@@ -71,7 +76,7 @@ async fn new_user(
         // TODO: Ban IPs in case of failed login
         // Issue URL: https://github.com/Colabie/Colabie/issues/60
         // labels: enhancement, discussion
-        .ok_or("Invalid username")?;
+        .ok_or_else(|| anyhow::anyhow!("Invalid username"))?;
 
     let mut rng = ChaCha20Rng::from_os_rng();
     let auth_req = S2CAuthReq {
@@ -88,10 +93,96 @@ async fn new_user(
         .send(S2CAuthResult::Success.serialize_buffered().into())
         .await?;
 
-    Ok(())
+    let mut self_channel = SelfChannel::new(username.clone(), user_channels.clone()).await;
+
+    loop {
+        tokio::select! {
+            ws_recv = recv(&mut socket) => {
+                let ConnectToUser { username: other_username } = ws_recv?;
+                // TODO: Ban IPs in case of invalid username
+                // labels: enhancement, discussion
+                let Some(other) = user_channels.get(&other_username).await else {
+                    socket
+                        .send(
+                            S2CConnectToUserResult::UserOffline
+                                .serialize_buffered()
+                                .into(),
+                        )
+                        .await?;
+                    continue;
+                };
+
+                // try_tell on the first interaction, but wait for next times
+                let Ok(_) = other.try_tell(&username, ChannelMsg::ConnectToUser) else {
+                    socket
+                        .send(S2CConnectToUserResult::UserBusy.serialize_buffered().into())
+                        .await?;
+                    continue;
+                };
+
+                match self_channel.listen(&other_username).await {
+                    Some(ChannelMsg::ConnectToUserReject) => {
+                        socket
+                            .send(S2CConnectToUserResult::Reject.serialize_buffered().into())
+                            .await?;
+                        continue;
+                    }
+
+                    Some(ChannelMsg::UserBusy) => {
+                        socket
+                            .send(S2CConnectToUserResult::UserBusy.serialize_buffered().into())
+                            .await?;
+                        continue;
+                    }
+
+                    None => {
+                        if !user_channels.is_online(&other_username).await {
+                            socket
+                                .send(
+                                    S2CConnectToUserResult::UserOffline
+                                        .serialize_buffered()
+                                        .into(),
+                                )
+                                .await?;
+                        }
+                        continue;
+                    }
+
+                    // Implicitly accept if the other user also tries to connect at the same time
+                    Some(ChannelMsg::ConnectToUserAccept | ChannelMsg::ConnectToUser) => {
+                        socket
+                            .send(S2CConnectToUserResult::Accept.serialize_buffered().into())
+                            .await?;
+                    }
+                }
+            }
+
+            ChannelMsgWithSender { from, message } = self_channel.hear() => {
+                match message {
+                    ChannelMsg::ConnectToUser => {
+                        socket
+                            .send(
+                                ConnectToUser { username: from.clone() }
+                                    .serialize_buffered()
+                                    .into()
+                            )
+                            .await?;
+                    }
+
+                    _ => unreachable!("Inappropriate message from self channel"),
+                }
+            }
+        }
+    }
 }
 
-async fn recv<T: Serde>(socket: &mut WebSocket) -> Result<T, Box<dyn Error + Send + Sync>> {
-    let msg = socket.recv().await.ok_or("Closed")??;
-    Ok(T::deserialize(&msg.into_data()).map(|x| x.0)?)
+async fn recv<T: Serde>(socket: &mut WebSocket) -> anyhow::Result<T> {
+    let msg = socket
+        .recv()
+        .await
+        .ok_or_else(|| anyhow::anyhow!("Closed"))??;
+
+    T::deserialize(&msg.into_data())
+        .map(|(t, _)| t)
+        .map_err(|e| anyhow::anyhow!(e))
 }

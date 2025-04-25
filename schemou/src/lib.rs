@@ -59,3 +59,23 @@ pub enum S2CAuthResult {
     Success,
     Failure,
 }
+
+#[derive(Serde)]
+pub struct ConnectToUser {
+    // TODO: Send WebRTC offer
+    pub username: legos::ShortIdStr,
+}
+
+#[derive(Serde)]
+pub enum S2CConnectToUserResult {
+    UserOffline,
+    UserBusy,
+    Reject,
+    Accept,
+}
+
+#[derive(Serde)]
+pub enum C2SConnectToUserResult {
+    Reject,
+    Accept,
+}
