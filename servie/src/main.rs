@@ -2,6 +2,8 @@ mod mirror;
 
 use mirror::Mirror;
 use schemou::{C2SAck, C2SAuthRes, S2CAuthReq, S2CAuthResult, Serde};
+use base64::prelude::*;
+use fips204::{ml_dsa_87, traits::SerDes};
 
 use std::error::Error;
 
@@ -14,6 +16,9 @@ use axum::{
 use rand::prelude::*;
 use rand_chacha::ChaCha20Rng;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+const MIRROR_PATH: &str = "locals/db-dummy-mirror";
+const REGISTRIE_URL: &str = "https://github.com/Colabie/registrie-mirror";
 
 #[derive(Clone)]
 struct AppState {
@@ -31,11 +36,8 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    tracing::info!("loading .env");
-    dotenvy::dotenv().expect("Failed to load .env file");
-
     let appstate = AppState {
-        mirror: Mirror::open_or_create()
+        mirror: Mirror::open_or_create(REGISTRIE_URL.into(), MIRROR_PATH.into())
             .await
             .expect("Could not connect to the DB"),
     };
@@ -62,15 +64,9 @@ async fn new_user(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let C2SAck { username } = recv(&mut socket).await?;
 
-    // TODO: Use commit id from the clientie as a hint that registrie might need to be refetched
-    // Issue URL: https://github.com/Colabie/Colabie/issues/61
-    // labels: enhancement, good first issue, discussion
-    let _record = mirror
+    let record = mirror
         .lookup_record(username.clone())
         .await
-        // TODO: Ban IPs in case of failed login
-        // Issue URL: https://github.com/Colabie/Colabie/issues/60
-        // labels: enhancement, discussion
         .ok_or("Invalid username")?;
 
     let mut rng = ChaCha20Rng::from_os_rng();
@@ -79,14 +75,30 @@ async fn new_user(
     };
     socket.send(auth_req.serialize_buffered().into()).await?;
 
-    // TODO: Verify the User and signed random
-    // labels: enhancement
-    // Issue URL: https://github.com/Colabie/Colabie/issues/54
-    // coupled with #4
-    let C2SAuthRes { signed_random: _ } = recv(&mut socket).await?;
-    socket
-        .send(S2CAuthResult::Success.serialize_buffered().into())
-        .await?;
+    // Verify the User and signed random
+    let C2SAuthRes { signed_random } = recv(&mut socket).await?;
+    
+    // Decode the base64 encoded public key from the record
+    let decoded_pubkey = BASE64_STANDARD.decode(record.pubkey)?;
+    
+    // Deserialize the public key
+    let pubkey = ml_dsa_87::PublicKey::from_bytes(&decoded_pubkey)
+        .map_err(|e| format!("Failed to deserialize public key: {}", e))?;
+    
+    // Verify the signature
+    let signature_valid = ml_dsa_87::try_verify(&pubkey, &auth_req.random, &signed_random)
+        .map_err(|e| format!("Signature verification error: {}", e))?;
+    
+    if signature_valid {
+        socket
+            .send(S2CAuthResult::Success.serialize_buffered().into())
+            .await?;
+    } else {
+        socket
+            .send(S2CAuthResult::Failure.serialize_buffered().into())
+            .await?;
+        return Err("Invalid signature".into());
+    }
 
     Ok(())
 }
