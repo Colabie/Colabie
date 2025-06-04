@@ -45,9 +45,9 @@ async fn main() {
         .with_state(appstate);
 
     let address = "0.0.0.0:8082";
-    let listner = tokio::net::TcpListener::bind(address).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
     tracing::info!("listening on: http://{}\n", address);
-    axum::serve(listner, router).await.unwrap();
+    axum::serve(listener, router).await.unwrap();
 }
 
 async fn connect(ws: WebSocketUpgrade, State(app_state): State<AppState>) -> impl IntoResponse {
