@@ -21,6 +21,14 @@ pub trait Serde {
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError>
     where
         Self: Sized;
+
+    fn serialize_buffered(&self) -> Vec<u8> {
+        // TODO: preallocate
+        // Issue URL: https://github.com/Colabie/Colabie/issues/19
+        let mut data = vec![];
+        _ = self.serialize(&mut data);
+        data
+    }
 }
 
 const AUTH_SIZE: usize = 2048;

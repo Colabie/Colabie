@@ -61,17 +61,6 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
     };
 
     let gen = quote! {
-        impl #name {
-            #[inline]
-            pub fn serialize_buffered(&self) -> Vec<u8> {
-                // TODO: preallocate
-                // Issue URL: https://github.com/Colabie/Colabie/issues/19
-                let mut data = vec![];
-                _ = Serde::serialize(self, &mut data);
-                data
-            }
-        }
-
         impl Serde for #name {
             fn serialize(&self, output: &mut Vec<u8>) -> usize {
                 let mut bytes_written = 0;
