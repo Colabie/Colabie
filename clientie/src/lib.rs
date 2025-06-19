@@ -1,4 +1,9 @@
-use schemou::*;
+pub mod servie_conn;
+pub mod ws;
+
+use crate::servie_conn::ServieConn;
+use schemou::{legos::ShortIdStr, C2RRegister, R2CRegister, Serde};
+
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::js_sys::Uint8Array;
 
@@ -18,6 +23,7 @@ extern "C" {
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
+    fn confirm(s: &str) -> bool;
 
     #[wasm_bindgen(js_namespace = console)]
     fn log(msg: &str);
@@ -30,7 +36,7 @@ pub async fn register(username: &str) -> Result<(), JsValue> {
     // labels: help wanted, discussion
     // Issue URL: https://github.com/Colabie/Colabie/issues/6
 
-    let username = legos::ShortIdStr::new(username)
+    let username = ShortIdStr::new(username)
         .map_err(|e| JsValue::from_str(&format!("Invalid username: {e}")))?;
 
     let (pb_key, sk_key) = generate_keypair();
@@ -39,6 +45,7 @@ pub async fn register(username: &str) -> Result<(), JsValue> {
     // labels: enhancement, discussion
     // Issue URL: https://github.com/Colabie/Colabie/issues/5
     save_raw("sk_key", &sk_key);
+    save_raw("username", username.as_bytes());
 
     let register = C2RRegister {
         username,
@@ -58,6 +65,20 @@ pub async fn register(username: &str) -> Result<(), JsValue> {
     alert(&format!("Registered: {:#?}", resp.commit_id));
 
     Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn login() -> Result<ServieConn, JsValue> {
+    let username = load_raw("username");
+    let username = str::from_utf8(&username)
+        .map_err(|e| JsValue::from_str(&format!("Unreachable: Corrupted username {e}")))?;
+
+    // TODO: Save secret key securely in a file instead
+    // labels: enhancement, discussion
+    // Issue URL: https://github.com/Colabie/Colabie/issues/5
+    let sk_key = load_raw("sk_key");
+
+    ServieConn::new("ws://localhost:8082/connect", username, &sk_key).await
 }
 
 // TODO: Use more robust hybrid cryptographic methods instead

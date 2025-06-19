@@ -1,6 +1,6 @@
 use crate::{Serde, SerdeError};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ShortIdStr(String);
 
 impl ShortIdStr {

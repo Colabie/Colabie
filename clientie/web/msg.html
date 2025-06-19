@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<script type="module">
+    import init, { login } from "./wasm/clientie.js";
+
+    init().then(async () => {
+        let servie = await login();
+
+        const usernameField = document.getElementById("username");
+        const connectBtn = document.getElementById("connect");
+
+        connectBtn.addEventListener("click", async () => {
+            let username = usernameField.value;
+            if (!username) {
+                alert("Please enter a username.");
+                return;
+            }
+
+            let a = await servie.connectToUser(username);
+            console.log(a);
+        });
+    });
+
+</script>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Colabie | Message</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <h1>Message another user</h1>
+
+    Username: <input id="username" type="text"><br>
+    <button id="connect">Connect</button>
+</head>
+
+<body>
+</body>
+
+</html>

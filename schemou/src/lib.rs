@@ -33,7 +33,7 @@ pub trait Serde {
 
 const AUTH_SIZE: usize = 2048;
 
-#[derive(Serde)]
+#[derive(Serde, Debug)]
 pub struct C2RRegister {
     pub username: legos::ShortIdStr,
     // TODO: All schemou types should be Hardened and have explicit invarients, no generic de-serialization
@@ -42,28 +42,47 @@ pub struct C2RRegister {
     pub pubkey: Box<[u8]>,
 }
 
-#[derive(Serde)]
+#[derive(Serde, Debug)]
 pub struct R2CRegister {
     pub commit_id: Box<[u8]>,
 }
 
-#[derive(Serde)]
+#[derive(Serde, Debug)]
 pub struct C2SAck {
     pub username: legos::ShortIdStr,
 }
 
-#[derive(Serde)]
+#[derive(Serde, Debug)]
 pub struct S2CAuthReq {
     pub random: [u8; AUTH_SIZE],
 }
 
-#[derive(Serde)]
+#[derive(Serde, Debug)]
 pub struct C2SAuthRes {
     pub signed_random: Box<[u8]>,
 }
 
-#[derive(Serde)]
+#[derive(Serde, Debug)]
 pub enum S2CAuthResult {
     Success,
     Failure,
+}
+
+#[derive(Serde, Debug)]
+pub struct ConnectToUser {
+    // TODO: Send WebRTC offer
+    pub username: legos::ShortIdStr,
+}
+
+#[derive(Serde, Debug)]
+pub enum S2CConnectToUserResult {
+    UserBusy,
+    Reject,
+    Accept,
+}
+
+#[derive(Serde, Debug)]
+pub enum C2SConnectToUserResult {
+    Reject,
+    Accept,
 }
