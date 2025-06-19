@@ -14,7 +14,7 @@ futures = "0.3.31"
 web-sys = { version = "0.3.77", features = ["WebSocket", "ErrorEvent", "MessageEvent", "BinaryType"] }
 
 fips204 = "0.4"
-rand_chacha = "0.3"
+rand_chacha = "0.9"
 getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
