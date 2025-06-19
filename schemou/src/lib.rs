@@ -71,6 +71,7 @@ pub enum S2CAuthResult {
 #[derive(Serde, Debug)]
 pub struct ConnectToUser {
     // TODO: Send WebRTC offer
+    // Issue URL: https://github.com/Colabie/Colabie/issues/73
     pub username: legos::ShortIdStr,
 }
 

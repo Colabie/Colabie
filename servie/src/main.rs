@@ -102,6 +102,7 @@ async fn handle_ws(
                 ws_recv = socket.recv_de() => {
                     let ConnectToUser { username: other_username } = ws_recv?;
                     // TODO: Ban IPs in case of invalid username
+                    // Issue URL: https://github.com/Colabie/Colabie/issues/74
                     // labels: enhancement, discussion
                     let Some(other) = user_channels.get(&other_username).await else {
                         socket.send_se(S2CConnectToUserResult::UserBusy).await?;
