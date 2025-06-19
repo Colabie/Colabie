@@ -10,7 +10,7 @@ use std::{collections::HashMap, error::Error, fmt, sync::Arc, time::Duration};
 use axum::extract::ws::{Message, WebSocket};
 use tokio::{
     sync::{mpsc, RwLock},
-    time::timeout,
+    time::{timeout_at, Instant},
 };
 
 #[allow(async_fn_in_trait)]
@@ -120,9 +120,10 @@ impl SelfChannel {
 
     pub async fn listen(&mut self, to: &ShortIdStr) -> Option<ChannelMsg> {
         let this = self.i.as_mut().expect("SelfChannel is dropped");
+
+        let assume_ignored = Instant::now() + Duration::from_secs(10);
         loop {
-            // FIXME: The timer resets even if the message is not from the expected user
-            match timeout(Duration::from_secs(10), this.channel.recv()).await {
+            match timeout_at(assume_ignored, this.channel.recv()).await {
                 Ok(Some(msg)) if &msg.from == to => {
                     return Some(msg.message);
                 }
