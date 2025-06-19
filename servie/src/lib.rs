@@ -173,6 +173,12 @@ impl UserChannel {
 #[derive(Clone, Debug)]
 pub struct UserChannels(Arc<RwLock<HashMap<ShortIdStr, mpsc::Sender<ChannelMsgWithSender>>>>);
 
+impl Default for UserChannels {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UserChannels {
     pub fn new() -> Self {
         Self(Arc::new(RwLock::new(HashMap::new())))

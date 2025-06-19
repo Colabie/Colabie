@@ -44,7 +44,7 @@ impl ServieConn {
         let (tx, mut rx) = mpsc::channel(1);
 
         spawn_local(async move {
-            let event_loop = async {
+            async {
                 loop {
                     select! {
                         server_msg = ws.recv_de::<ConnectToUser>().fuse() => {

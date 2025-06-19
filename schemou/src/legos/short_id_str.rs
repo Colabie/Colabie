@@ -59,7 +59,7 @@ impl Serde for ShortIdStr {
     }
 
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SerdeError> {
-        let len = data.get(0).ok_or(SerdeError::NotEnoughData)?.clone() as usize;
+        let len = *data.first().ok_or(SerdeError::NotEnoughData)? as usize;
         let short_id_str = ShortIdStr::from_bytes(
             data.get(1..len + 1)
                 .ok_or(SerdeError::NotEnoughData)?

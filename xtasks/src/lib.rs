@@ -10,7 +10,7 @@ impl EarlyRet<io::Error> for ExitStatus {
     fn early_ret(self) -> io::Result<Self> {
         match self.success() {
             true => Ok(self),
-            false => Err(io::Error::new(io::ErrorKind::Other, "Command failed")),
+            false => Err(io::Error::other("Command failed")),
         }
     }
 }
