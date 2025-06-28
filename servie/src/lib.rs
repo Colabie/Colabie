@@ -3,7 +3,7 @@ pub mod mirror;
 pub use mirror::Mirror;
 
 use schemou::legos::ShortIdStr;
-use schemou::Serde;
+use schemou::Sirius;
 
 use std::{collections::HashMap, error::Error, fmt, sync::Arc, time::Duration};
 
@@ -13,19 +13,36 @@ use tokio::{
     time::{timeout_at, Instant},
 };
 
+#[derive(Debug, thiserror::Error)]
+pub enum ServieError {
+    #[error("Websocket connection closed")]
+    SocketClosed,
+
+    #[error("Axum error: {0}")]
+    AxumError(#[from] axum::Error),
+
+    #[error("Serialization error: {0}")]
+    SerializationError(#[from] schemou::SiriusError),
+
+    #[error("User doesn't comply with protocol: {0}")]
+    NonCompliance(&'static str),
+}
+
+pub type Result<T, E = ServieError> = std::result::Result<T, E>;
+
 #[allow(async_fn_in_trait)]
 pub trait SerdeSocket {
-    async fn recv_de<T: Serde + fmt::Debug>(&mut self) -> anyhow::Result<T>;
-    async fn send_se<T: Serde + fmt::Debug>(&mut self, data: T) -> anyhow::Result<()>;
+    async fn recv_de<T: Sirius + fmt::Debug>(&mut self) -> Result<T>;
+    async fn send_se<T: Sirius + fmt::Debug>(&mut self, data: T) -> Result<()>;
 }
 
 impl SerdeSocket for WebSocket {
-    async fn recv_de<T: Serde + fmt::Debug>(&mut self) -> anyhow::Result<T> {
+    async fn recv_de<T: Sirius + fmt::Debug>(&mut self) -> Result<T> {
         loop {
             let msg = self
                 .recv()
                 .await
-                .ok_or_else(|| anyhow::anyhow!("Closed"))??;
+                .ok_or_else(|| ServieError::SocketClosed)??;
 
             let data = match msg {
                 Message::Binary(msg) => {
@@ -34,39 +51,37 @@ impl SerdeSocket for WebSocket {
                 }
                 Message::Text(_) => {
                     tracing::trace!("Received a text message, expected binary data, weird");
-                    return Err(anyhow::anyhow!(
-                        "Received a text message, expected binary data"
+                    return Err(ServieError::NonCompliance(
+                        "Received a text message, expected binary data",
                     ));
                 }
                 Message::Close(_) => {
                     tracing::trace!("Received a close message");
-                    return Err(anyhow::anyhow!("Received a close message"));
+                    return Err(ServieError::SocketClosed);
                 }
                 Message::Ping(_) => {
-                    tracing::trace!("Received a ping message, ignoring");
+                    tracing::trace!("Received a ping message");
                     continue;
                 }
                 Message::Pong(_) => {
-                    tracing::trace!("Received a pong message, ignoring");
+                    tracing::trace!("Received a pong message");
                     continue;
                 }
             };
 
-            let deserialized_t = T::deserialize(&data)
-                .map(|(t, _)| t)
-                .map_err(anyhow::Error::from);
-            tracing::trace!("Deserialized message: {:?}", deserialized_t);
-            return deserialized_t;
+            let (deserialized, _) = T::deserialize(&data)?;
+            tracing::trace!("Deserialized message: {:?}", deserialized);
+            return Ok(deserialized);
         }
     }
 
-    async fn send_se<T: Serde + fmt::Debug>(&mut self, data: T) -> anyhow::Result<()> {
+    async fn send_se<T: Sirius + fmt::Debug>(&mut self, data: T) -> Result<()> {
         tracing::trace!("Sending message: {:?}", data);
 
         let serialized = data.serialize_buffered();
-        self.send(serialized.into())
-            .await
-            .map_err(anyhow::Error::from)
+        self.send(serialized.into()).await?;
+
+        Ok(())
     }
 }
 

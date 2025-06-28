@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use schemou::Serde;
+use schemou::Sirius;
 
 use futures::{
     channel::{mpsc, oneshot},
@@ -55,12 +55,12 @@ impl WebSocket {
         Ok(Self { ws, rx })
     }
 
-    pub fn send_se<T: Serde>(&mut self, data: T) -> Result<(), JsValue> {
+    pub fn send_se<T: Sirius>(&mut self, data: T) -> Result<(), JsValue> {
         let serialized = data.serialize_buffered();
         self.send(&serialized)
     }
 
-    pub async fn recv_de<T: Serde>(&mut self) -> Result<T, JsValue> {
+    pub async fn recv_de<T: Sirius>(&mut self) -> Result<T, JsValue> {
         let msg = self.recv().await?;
 
         let array_buffer: js_sys::ArrayBuffer = msg

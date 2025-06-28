@@ -61,11 +61,11 @@ async fn handle_ws(
         mirror,
         user_channels,
     }: AppState,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let C2SAck { username } = socket.recv_de().await?;
 
     if user_channels.is_online(&username).await {
-        return Err(anyhow::anyhow!("User {:?} is already online", *username));
+        return Err(ServieError::NonCompliance("User is already online"));
     }
 
     // TODO: Use commit id from the clientie as a hint that registrie might need to be refetched
@@ -77,7 +77,7 @@ async fn handle_ws(
         // TODO: Ban IPs in case of failed login
         // Issue URL: https://github.com/Colabie/Colabie/issues/60
         // labels: enhancement, discussion
-        .ok_or_else(|| anyhow::anyhow!("Invalid username"))?;
+        .ok_or_else(|| ServieError::NonCompliance("Invalid username"))?;
 
     let mut rng = ChaCha20Rng::from_os_rng();
     let auth_req = S2CAuthReq {

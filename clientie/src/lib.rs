@@ -2,7 +2,7 @@ pub mod servie_conn;
 pub mod ws;
 
 use crate::servie_conn::ServieConn;
-use schemou::{legos::ShortIdStr, C2RRegister, R2CRegister, Serde};
+use schemou::{legos::ShortIdStr, C2RRegister, R2CRegister, Sirius};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::js_sys::Uint8Array;

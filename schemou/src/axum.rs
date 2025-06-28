@@ -7,13 +7,13 @@ use axum::{
     response::{IntoResponse, Response},
 };
 
-use crate::Serde;
+use crate::Sirius;
 
-pub struct Schemou<T: Serde>(pub T);
+pub struct Schemou<T: Sirius>(pub T);
 
 impl<T, S> FromRequest<S> for Schemou<T>
 where
-    T: Serde,
+    T: Sirius,
     S: Send + Sync,
 {
     type Rejection = StatusCode;
@@ -36,11 +36,9 @@ where
 
 impl<T> IntoResponse for Schemou<T>
 where
-    T: Serde,
+    T: Sirius,
 {
     fn into_response(self) -> Response {
-        let mut v = vec![];
-        self.0.serialize(&mut v);
-        v.into_response()
+        self.0.serialize_buffered().into_response()
     }
 }
