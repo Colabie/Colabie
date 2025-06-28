@@ -33,7 +33,7 @@ impl ServieConn {
         // Issue URL: https://github.com/Colabie/Colabie/issues/54
         // coupled with #4
         ws.send_se(C2SAuthRes {
-            signed_random: random.into(),
+            signed_random: random,
         })?;
 
         let auth_result = ws.recv_de().await?;
